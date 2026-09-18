@@ -273,12 +273,12 @@ export default function AttendancePage() {
           {/* Attendance Records */}
           <Card className="rounded-md border-border/60 shadow-sm">
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <CardTitle>Attendance Records</CardTitle>
                 {attendanceRecords && attendanceRecords.length === 0 && (
                   <Button
                     onClick={() => setIsAttendanceFormOpen(true)}
-                    className="bg-leo-primary hover:bg-leo-primary-dark"
+                    className="w-full bg-leo-primary hover:bg-leo-primary-dark sm:w-auto"
                   >
                     Record Attendance
                   </Button>
@@ -289,6 +289,7 @@ export default function AttendancePage() {
               {attendanceLoading ? (
                 <Skeleton className="h-40 w-full" />
               ) : attendanceRecords && attendanceRecords.length > 0 ? (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -359,6 +360,7 @@ export default function AttendancePage() {
                     })}
                   </TableBody>
                 </Table>
+                </div>
               ) : (
                 <div className="text-center py-8">
                   <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />

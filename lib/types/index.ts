@@ -86,14 +86,30 @@ export interface CartItem {
   color?: string
 }
 
+export interface OrderItem {
+  productId: string
+  name: string
+  quantity: number
+  price: number
+  size?: string
+  color?: string
+}
+
 export interface Order {
   id: string
   userId: string
-  items: CartItem[]
+  items: OrderItem[]
+  subtotal?: number
+  deliveryFee?: number
   total: number
+  currency?: string
   status: "pending" | "processing" | "completed" | "cancelled"
   paymentMethod: string
   paymentStatus: "pending" | "paid" | "failed"
+  txRef?: string
+  customerName?: string
+  customerEmail?: string
+  phone?: string
   shippingAddress: string
   createdAt: string
   updatedAt: string

@@ -3,12 +3,12 @@ import { Users, Award, Target, Heart } from "lucide-react"
 
 export default function AboutPage() {
   return (
-    <div className="py-16">
+    <div className="py-10 md:py-16">
       <div className="container px-4 max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">About MUBAS Leo Club</h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <h1 className="text-3xl md:text-5xl font-bold mb-4">About MUBAS Leo Club</h1>
+          <p className="text-base md:text-xl text-gray-600 max-w-3xl mx-auto">
             Empowering young leaders to serve their communities and develop skills for life
           </p>
         </div>
@@ -16,7 +16,7 @@ export default function AboutPage() {
         {/* Mission & Vision Grid */}
         <div className="grid md:grid-cols-2 gap-8 mb-16">
           <Card className="border-leo-primary/30">
-            <CardContent className="p-8">
+            <CardContent className="p-5 md:p-8">
               <Target className="h-12 w-12 text-leo-primary mb-4" />
               <h2 className="text-2xl font-bold mb-4">Our Mission</h2>
               <p className="text-gray-700 leading-relaxed">
@@ -28,7 +28,7 @@ export default function AboutPage() {
           </Card>
 
           <Card className="border-leo-secondary/30">
-            <CardContent className="p-8">
+            <CardContent className="p-5 md:p-8">
               <Heart className="h-12 w-12 text-leo-secondary mb-4" />
               <h2 className="text-2xl font-bold mb-4">Our Vision</h2>
               <p className="text-gray-700 leading-relaxed">

@@ -9,8 +9,7 @@ import { useCartStore } from "@/lib/store/cart-store"
 import { getShopProduct, shopProducts } from "@/lib/shop/catalog"
 import { formatMoney } from "@/lib/utils/format"
 import { portalCanvasMuted, portalCanvasTitle } from "@/components/portal/styles"
-
-const DELIVERY_FEE = 2000
+import { DELIVERY_FEE } from "@/lib/shop/checkout"
 
 export default function CartPage() {
   const router = useRouter()

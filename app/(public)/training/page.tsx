@@ -27,12 +27,12 @@ export default function TrainingPage() {
       : trainings?.filter((t) => t.category.toLowerCase() === selectedCategory)
 
   return (
-    <div className="py-16">
+    <div className="py-10 md:py-16">
       <div className="container px-4 max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Training & Resources</h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <h1 className="text-3xl md:text-5xl font-bold mb-4">Training & Resources</h1>
+          <p className="text-base md:text-xl text-gray-600 max-w-3xl mx-auto">
             There is one new member program: register as joining, then complete modules and quizzes in the member portal.
           </p>
         </div>
@@ -55,7 +55,7 @@ export default function TrainingPage() {
         </Card>
 
         {/* Category Filter */}
-        <div className="flex flex-wrap gap-2 justify-center mb-8">
+        <div className="flex gap-2 overflow-x-auto justify-start md:justify-center mb-8 pb-1 scrollbar-none">
           {categories.map((cat) => (
             <Button
               key={cat.id}

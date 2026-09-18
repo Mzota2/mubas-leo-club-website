@@ -116,18 +116,18 @@ export function PortalHeader() {
           hideMobileIdentity && "hidden",
         )}
       >
-        <div className="flex h-14 items-center justify-between gap-3 px-4">
-          <Link href="/portal/profile" aria-label="Profile">
-            <Avatar className="h-10 w-10 border-2 border-white/80">
+        <div className="flex h-14 min-w-0 items-center justify-between gap-2 px-3 sm:px-4">
+          <Link href="/portal/profile" aria-label="Profile" className="shrink-0">
+            <Avatar className="h-9 w-9 border-2 border-white/80 sm:h-10 sm:w-10">
               <AvatarImage src={user?.profileImage || "/placeholder.svg"} />
               <AvatarFallback className="bg-white text-sm font-bold text-leo-primary">{initials}</AvatarFallback>
             </Avatar>
           </Link>
-          <div className="inline-flex items-center gap-2 rounded-md bg-[#92400E] px-3 py-1.5 text-sm font-medium">
-            <IdCard className="h-4 w-4" />
-            ID {user?.leoId || "Leo-124537"}
+          <div className="inline-flex min-w-0 max-w-[42%] items-center gap-1.5 rounded-md bg-[#92400E] px-2 py-1.5 text-xs font-medium sm:max-w-none sm:gap-2 sm:px-3 sm:text-sm">
+            <IdCard className="h-4 w-4 shrink-0" />
+            <span className="truncate">ID {user?.leoId || "Leo-124537"}</span>
           </div>
-          <div className="flex items-center">
+          <div className="flex shrink-0 items-center gap-1">
             <WorkspaceSwitcher current="portal" compact />
             <Link
               href="/portal/notifications"

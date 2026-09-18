@@ -1,26 +1,33 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, CreditCard } from "lucide-react"
+import { ChevronLeft, CreditCard, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useCartStore } from "@/lib/store/cart-store"
 import { getShopProduct, shopProducts } from "@/lib/shop/catalog"
+import { buildOrderItems, DELIVERY_FEE, orderItemsTotal } from "@/lib/shop/checkout"
+import { initiatePayment } from "@/lib/paychangu/client"
+import { useAuth } from "@/lib/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 import { formatMoney } from "@/lib/utils/format"
 import { portalCanvasMuted, portalCanvasTitle } from "@/components/portal/styles"
 
-const DELIVERY_FEE = 2000
-
 export default function CheckoutPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { items, getTotalPrice, clearCart } = useCartStore()
+  const { user, loading } = useAuth()
+  const { items, getTotalPrice } = useCartStore()
+  const [fullName, setFullName] = useState("")
+  const [phone, setPhone] = useState("")
+  const [address, setAddress] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
-  const subtotal = getTotalPrice(shopProducts)
+
+  const orderItems = useMemo(() => buildOrderItems(items), [items])
+  const subtotal = orderItems.length ? orderItemsTotal(orderItems) : getTotalPrice(shopProducts)
   const total = subtotal + DELIVERY_FEE
 
   useEffect(() => {
@@ -29,20 +36,71 @@ export default function CheckoutPage() {
     }
   }, [items.length, router])
 
+  useEffect(() => {
+    if (!user) return
+    if (!fullName) setFullName(`${user.firstName ?? ""} ${user.lastName ?? ""}`.trim())
+    if (!phone) setPhone(user.phone ?? "")
+  }, [fullName, phone, user])
+
   const handlePayment = async () => {
-    setIsProcessing(true)
-    window.setTimeout(() => {
-      clearCart()
+    if (!user) {
+      toast({ title: "Sign in required", description: "Log in to complete checkout.", variant: "destructive" })
+      router.push("/auth/login")
+      return
+    }
+    if (!fullName.trim() || !phone.trim() || !address.trim()) {
       toast({
-        title: "Order placed",
-        description: "Payment received. Check your email for confirmation.",
+        title: "Delivery details required",
+        description: "Enter your name, phone, and delivery address.",
+        variant: "destructive",
       })
-      router.push("/portal/shop/orders")
+      return
+    }
+    if (orderItems.length === 0) {
+      toast({ title: "Cart is empty", description: "Add items before paying.", variant: "destructive" })
+      return
+    }
+
+    setIsProcessing(true)
+    try {
+      const nameParts = fullName.trim().split(/\s+/)
+      const result = await initiatePayment({
+        amount: total,
+        email: user.email,
+        firstName: nameParts[0] || user.firstName,
+        lastName: nameParts.slice(1).join(" ") || user.lastName,
+        currency: "MWK",
+        purpose: "order",
+        userId: user.id,
+        customerName: fullName.trim(),
+        phone: phone.trim(),
+        shippingAddress: address.trim(),
+        items: orderItems,
+        subtotal,
+        deliveryFee: DELIVERY_FEE,
+        returnUrl: `${window.location.origin}/portal/shop/checkout/return`,
+        customization: {
+          title: "MUBAS Leo Club shop",
+          description: `Order of ${orderItems.length} item${orderItems.length === 1 ? "" : "s"} for ${formatMoney(total)}`,
+        },
+      })
+      if (result.success && result.checkoutUrl) {
+        window.location.href = result.checkoutUrl
+        return
+      }
+      toast({
+        title: "Payment error",
+        description: result.error || "Could not start PayChangu checkout.",
+        variant: "destructive",
+      })
+    } catch {
+      toast({ title: "Payment error", description: "Try again in a moment.", variant: "destructive" })
+    } finally {
       setIsProcessing(false)
-    }, 1200)
+    }
   }
 
-  if (items.length === 0) {
+  if (items.length === 0 || loading) {
     return null
   }
 
@@ -59,15 +117,35 @@ export default function CheckoutPage() {
         <h2 className="font-semibold">Delivery</h2>
         <div>
           <Label htmlFor="fullName">Full name</Label>
-          <Input id="fullName" placeholder="Your name" className="mt-1 rounded-md" />
+          <Input
+            id="fullName"
+            value={fullName}
+            onChange={(event) => setFullName(event.target.value)}
+            placeholder="Your name"
+            className="mt-1 rounded-md"
+          />
         </div>
         <div>
           <Label htmlFor="phone">Phone</Label>
-          <Input id="phone" type="tel" placeholder="+265 999 123 456" className="mt-1 rounded-md" />
+          <Input
+            id="phone"
+            type="tel"
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+            placeholder="+265 999 123 456"
+            className="mt-1 rounded-md"
+          />
         </div>
         <div>
           <Label htmlFor="address">Address</Label>
-          <Textarea id="address" placeholder="Delivery address" rows={3} className="mt-1 rounded-md" />
+          <Textarea
+            id="address"
+            value={address}
+            onChange={(event) => setAddress(event.target.value)}
+            placeholder="Delivery address"
+            rows={3}
+            className="mt-1 rounded-md"
+          />
         </div>
       </div>
 
@@ -77,7 +155,7 @@ export default function CheckoutPage() {
           const product = getShopProduct(item.productId)
           if (!product) return null
           return (
-            <div key={item.productId} className="flex justify-between text-sm">
+            <div key={`${item.productId}-${item.size ?? ""}-${item.color ?? ""}`} className="flex justify-between text-sm">
               <span className="text-neutral-600">
                 {product.name} × {item.quantity}
               </span>
@@ -103,7 +181,7 @@ export default function CheckoutPage() {
         <CreditCard className="h-6 w-6 text-leo-primary" />
         <div>
           <p className="font-medium">PayChangu</p>
-          <p className="text-sm text-neutral-600">Mobile money checkout</p>
+          <p className="text-sm text-neutral-600">You will be redirected to complete mobile money payment.</p>
         </div>
       </div>
 
@@ -112,7 +190,8 @@ export default function CheckoutPage() {
         disabled={isProcessing}
         className="h-12 w-full rounded-md bg-[#F59E0B] text-white hover:bg-[#D97706]"
       >
-        {isProcessing ? "Processing..." : `Pay ${formatMoney(total)}`}
+        {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+        {isProcessing ? "Redirecting to PayChangu..." : `Pay ${formatMoney(total)}`}
       </Button>
       <p className={`text-center text-xs ${portalCanvasMuted}`}>By placing this order you agree to club shop terms.</p>
     </div>

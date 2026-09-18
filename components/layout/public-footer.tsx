@@ -9,7 +9,7 @@ export function PublicFooter() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
           {/* About Section */}
           <div className="lg:col-span-1">
-            <Logo size="md" showText={true} textClassName="text-white text-lg" />
+            <Logo size="md" showText={true} textClassName="!inline text-white text-lg" />
             <p className="text-sm leading-relaxed text-gray-400 mb-4">
               Leadership, Experience, Opportunity. Join us in making a difference through community service and youth
               development.

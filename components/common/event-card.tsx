@@ -47,9 +47,9 @@ export function EventCard({ event, href }: EventCardProps) {
               {new Date(event.date).toLocaleDateString()} at {event.time}
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4" />
-            <span>{event.location}</span>
+          <div className="flex min-w-0 items-center gap-2">
+            <MapPin className="h-4 w-4 shrink-0" />
+            <span className="min-w-0 break-words">{event.location}</span>
           </div>
           {event.attendees && event.attendees.length > 0 && (
             <div className="flex items-center gap-2">

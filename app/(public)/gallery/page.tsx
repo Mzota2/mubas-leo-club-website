@@ -14,11 +14,11 @@ export default function GalleryPage() {
   const { data: images, isLoading } = useGalleryImages()
 
   return (
-    <div className="py-16">
+    <div className="py-10 md:py-16">
       <div className="container px-4 max-w-7xl mx-auto">
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Gallery</h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <h1 className="text-3xl md:text-5xl font-bold mb-4">Gallery</h1>
+          <p className="text-base md:text-xl text-gray-600 max-w-3xl mx-auto">
             Capturing moments of service, leadership, and community impact
           </p>
         </div>
@@ -52,7 +52,7 @@ export default function GalleryPage() {
         </div>
 
         <Dialog open={selectedImage !== null} onOpenChange={() => setSelectedImage(null)}>
-          <DialogContent className="max-w-4xl p-0">
+          <DialogContent className="max-w-[calc(100%-1.5rem)] p-0 sm:max-w-4xl">
             {selectedImage !== null && (
               <div className="relative">
                 <button

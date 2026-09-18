@@ -3,7 +3,7 @@ import { Logo } from "@/components/ui/logo"
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-dvh flex items-center justify-center bg-gray-50 px-4 py-8">
       <div className="w-full max-w-md space-y-6">
         <div className="flex justify-center">
           <Logo size="xl" showText={false} />

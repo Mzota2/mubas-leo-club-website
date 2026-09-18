@@ -17,7 +17,7 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-5 px-4 py-5 lg:px-6 lg:py-8">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Avatar className="h-16 w-16 border-2 border-white/80">
           <AvatarImage src={user?.profileImage || "/placeholder.svg"} />
           <AvatarFallback className="bg-white text-xl font-bold text-leo-primary">
@@ -25,7 +25,7 @@ export default function ProfilePage() {
             {user?.lastName?.[0]}
           </AvatarFallback>
         </Avatar>
-        <div className="flex min-w-0 flex-1 gap-2">
+        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
           <div className="flex min-w-0 flex-1 items-center gap-2 rounded-md bg-[#92400E] px-3 py-2 text-white">
             <IdCard className="h-4 w-4 shrink-0" />
             <div className="min-w-0">
@@ -33,7 +33,7 @@ export default function ProfilePage() {
               <p className="truncate text-sm font-medium">{user?.username || "Leo Mzota"}</p>
             </div>
           </div>
-          <div className="w-28 shrink-0 rounded-md bg-white px-3 py-2">
+          <div className="rounded-md bg-white px-3 py-2 sm:w-28 sm:shrink-0">
             <p className="text-sm font-semibold leading-tight text-[#7F1D1D]">
               {user?.position || "Membership Chair"}
             </p>

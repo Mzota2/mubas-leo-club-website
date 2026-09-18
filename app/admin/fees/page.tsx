@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { CreditCard, Wallet } from "lucide-react"
 import { AdminPageHeader } from "@/components/admin/page-header"
 import { AdminStatCard } from "@/components/admin/stat-card"
@@ -154,6 +155,11 @@ export default function AdminFeesPage() {
       <AdminPageHeader
         title="Membership fees"
         description="Track monthly, semester, and yearly payments. Record fees paid outside the platform."
+        actions={
+          <Button asChild variant="outline">
+            <Link href="/admin/payments">Payment ledger</Link>
+          </Button>
+        }
       />
 
       <div className="rounded-md border bg-white p-4">
@@ -199,7 +205,7 @@ export default function AdminFeesPage() {
       </div>
 
       <Tabs value={view} onValueChange={(value) => setView(value as View)}>
-        <TabsList>
+        <TabsList className="w-full sm:w-fit">
           <TabsTrigger value="monthly">This month</TabsTrigger>
           <TabsTrigger value="semester">This semester</TabsTrigger>
           <TabsTrigger value="yearly">This year</TabsTrigger>
@@ -213,7 +219,7 @@ export default function AdminFeesPage() {
           : `Coverage: ${formatDate(range.start.toISOString())} – ${formatDate(range.end.toISOString())}`}
       </p>
 
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
         <AdminStatCard title="Collected" value={formatMoney(collected)} icon={Wallet} accent="green" loading={feesLoading} />
         <AdminStatCard title="Outstanding" value={formatMoney(outstanding)} hint={`${unpaidMembers.length} unpaid × ${formatMoney(periodFee)}`} icon={CreditCard} accent="red" loading={usersLoading} />
         <AdminStatCard title="Paid" value={paidMembers.length} icon={Wallet} accent="orange" />
@@ -225,7 +231,7 @@ export default function AdminFeesPage() {
       ) : activeRoster.length === 0 ? (
         <AdminEmptyState icon={CreditCard} title="No members yet" description="Members appear here after they register." />
       ) : (
-        <div className="overflow-hidden rounded-md border bg-white">
+        <div className="overflow-x-auto rounded-md border bg-white">
           <Table>
             <TableHeader>
               <TableRow>

@@ -155,7 +155,7 @@ export default function AdminTrainingPage() {
               description="Create the first training module, then add a video, article, and quiz."
             />
           ) : (
-            <div className="overflow-hidden rounded-md border bg-white">
+            <div className="overflow-x-auto rounded-md border bg-white">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -201,7 +201,7 @@ export default function AdminTrainingPage() {
         </TabsContent>
 
         <TabsContent value="learners" className="mt-4">
-          <div className="overflow-hidden rounded-md border bg-white">
+          <div className="overflow-x-auto rounded-md border bg-white">
             <Table>
               <TableHeader>
                 <TableRow>

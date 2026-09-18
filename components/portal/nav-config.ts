@@ -1,6 +1,7 @@
 import {
   Calendar,
   CalendarDays,
+  CreditCard,
   GraduationCap,
   Home,
   Search,
@@ -28,6 +29,7 @@ export const portalDesktopNav: PortalNavItem[] = [
 export const portalDesktopMore: PortalNavItem[] = [
   { href: "/portal/training", icon: GraduationCap, label: "Training", match: "prefix" },
   { href: "/portal/membership", icon: User, label: "Membership", match: "prefix" },
+  { href: "/portal/payments", icon: CreditCard, label: "Payments", match: "prefix" },
   { href: "/portal/calendar", icon: CalendarDays, label: "Calendar", match: "prefix" },
   { href: "/portal/settings", icon: Settings, label: "Settings", match: "prefix" },
 ]
@@ -42,6 +44,7 @@ export const portalMobileNav: PortalNavItem[] = [
 
 export const portalMoreLinks: PortalNavItem[] = [
   { href: "/portal/training", icon: GraduationCap, label: "Training", match: "prefix" },
+  { href: "/portal/payments", icon: CreditCard, label: "Payments", match: "prefix" },
   { href: "/portal/search", icon: Search, label: "Search", match: "prefix" },
   { href: "/portal/settings", icon: Settings, label: "Settings", match: "prefix" },
 ]

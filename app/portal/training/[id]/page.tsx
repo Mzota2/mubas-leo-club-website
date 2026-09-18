@@ -35,7 +35,7 @@ export default function PortalTrainingModulePage({ params }: { params: Promise<{
   const { data: module } = useTrainingModule(id)
   const { data: modules = [] } = useTrainingModules()
   const { data: savedProgress } = useTrainingProgress(user?.id)
-  const { data: fees = [] } = useMembershipFees(user?.id)
+  const { data: fees = [] } = useMembershipFees(user?.id, true)
   const joiningPaid = user ? hasPaidJoiningFee(fees, user.id, user) : false
   const upsertProgress = useUpsertTrainingProgress()
   const updateUser = useUpdateUser()

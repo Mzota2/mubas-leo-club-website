@@ -57,7 +57,7 @@ export default function ShopCategoryPage({
       <ShopTopBar title={category.label} />
       <ShopSearch value={query} onChange={setQuery} />
 
-      <div className="flex gap-3 overflow-x-auto pb-1">
+      <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
         {visible.map((product) => {
           const active = product.id === selected.id
           return (

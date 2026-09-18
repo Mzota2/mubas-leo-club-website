@@ -14,6 +14,9 @@ import {
   ClipboardCheck,
   Image as ImageIcon,
   CalendarPlus,
+  CreditCard,
+  GraduationCap,
+  Wallet,
 } from "lucide-react"
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,7 +29,13 @@ import { useAuth } from "@/lib/hooks/use-auth"
 import { useUsers } from "@/lib/hooks/use-users"
 import { useEvents } from "@/lib/hooks/use-events"
 import { useDonations } from "@/lib/hooks/use-donations"
+import { useMembershipFees } from "@/lib/hooks/use-membership-fees"
+import { useOrders } from "@/lib/hooks/use-orders"
 import { displayName, formatMoney, formatRelativeTime, greetingForHour } from "@/lib/utils/format"
+import { SAMPLE_PAYMENTS, SAMPLE_PAYMENT_TOTALS } from "@/lib/payments/defaults"
+import { donationToRecord, feeToRecord, orderToRecord, paymentTotals } from "@/lib/payments/receipt"
+import { PaymentsTable } from "@/components/payments/payments-table"
+import { periodLabel } from "@/lib/membership/billing"
 import { categoryColors } from "@/lib/constants/theme"
 import type { Event, User } from "@/lib/types"
 
@@ -69,8 +78,10 @@ export default function AdminDashboard() {
   const { data: users, isLoading: usersLoading } = useUsers()
   const { data: events, isLoading: eventsLoading } = useEvents()
   const { data: donations, isLoading: donationsLoading } = useDonations()
+  const { data: fees, isLoading: feesLoading } = useMembershipFees()
+  const { data: orders, isLoading: ordersLoading } = useOrders()
 
-  const isLoading = usersLoading || eventsLoading || donationsLoading
+  const isLoading = usersLoading || eventsLoading || donationsLoading || feesLoading || ordersLoading
   const now = new Date()
   const currentYear = now.getFullYear()
   const currentMonth = now.getMonth()
@@ -80,6 +91,28 @@ export default function AdminDashboard() {
     for (const member of users ?? []) map.set(member.id, member)
     return map
   }, [users])
+
+  const paymentRecords = useMemo(() => {
+    const live = [
+      ...(donations ?? []).map(donationToRecord),
+      ...(fees ?? []).map((fee) => feeToRecord(fee, userById.get(fee.userId))),
+      ...(orders ?? []).map(orderToRecord),
+    ].sort((a, b) => b.date.localeCompare(a.date))
+    return live.length > 0 ? live : SAMPLE_PAYMENTS
+  }, [donations, fees, orders, userById])
+
+  const paymentSummary = useMemo(() => {
+    const live = paymentTotals(paymentRecords)
+    const usingSamples = (donations ?? []).length === 0 && (fees ?? []).length === 0 && (orders ?? []).length === 0
+    return {
+      ...live,
+      donations: live.donations || (usingSamples ? SAMPLE_PAYMENT_TOTALS.donationTotal : 0),
+      membership: live.membership || (usingSamples ? SAMPLE_PAYMENT_TOTALS.feesCollected : 0),
+      joining: live.joining || (usingSamples ? SAMPLE_PAYMENT_TOTALS.joiningCollected : 0),
+      pending: live.pending || (usingSamples ? SAMPLE_PAYMENT_TOTALS.pendingDonations : 0),
+      usingSamples,
+    }
+  }, [paymentRecords, donations, fees, orders])
 
   const totals = useMemo(() => {
     const members = users ?? []
@@ -212,6 +245,20 @@ export default function AdminDashboard() {
       })
     }
 
+    for (const fee of fees ?? []) {
+      if (fee.status !== "paid") continue
+      const member = userById.get(fee.userId)
+      activities.push({
+        id: `fee-${fee.id}`,
+        action: `${periodLabel(fee.period)} of ${formatMoney(Number(fee.amount) || 0)}`,
+        user: member ? displayName(member) : fee.userId,
+        time: formatRelativeTime(fee.paymentDate || fee.createdAt),
+        timestamp: new Date(fee.paymentDate || fee.createdAt).getTime(),
+        tone: "bg-orange-50 text-orange-600",
+        icon: CreditCard,
+      })
+    }
+
     for (const event of events ?? []) {
       const creator = userById.get(event.createdBy)
       activities.push({
@@ -229,7 +276,7 @@ export default function AdminDashboard() {
       .filter((item) => Number.isFinite(item.timestamp))
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 7)
-  }, [users, donations, events, userById])
+  }, [users, donations, events, fees, userById])
 
   const prospectiveLeos = useMemo(
     () => (users ?? []).filter((member) => member.membershipType === "prospective-leo"),
@@ -282,14 +329,20 @@ export default function AdminDashboard() {
           accent="blue"
           loading={isLoading}
         />
+        <Link href="/admin/payments" className="block">
         <AdminStatCard
           title="Donations received"
-          value={formatMoney(totals.donationTotal)}
-          hint={`${formatMoney(totals.donationThisMonth)} this month`}
+          value={formatMoney(paymentSummary.donations)}
+          hint={
+            paymentSummary.usingSamples
+              ? "Sample total until live PayChangu donations arrive · Open payments"
+              : `${formatMoney(totals.donationThisMonth)} this month · Open payments`
+          }
           icon={DollarSign}
           accent="green"
           loading={isLoading}
         />
+        </Link>
         <AdminStatCard
           title={`Events in ${currentYear}`}
           value={totals.eventsThisYear.toLocaleString()}
@@ -308,8 +361,42 @@ export default function AdminDashboard() {
         />
       </section>
 
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <Link href="/admin/payments?tab=membership" className="block">
+          <AdminStatCard
+            title="Membership fees"
+            value={formatMoney(paymentSummary.membership)}
+            hint="Collected monthly, semester, and yearly dues"
+            icon={Wallet}
+            accent="orange"
+            loading={isLoading}
+          />
+        </Link>
+        <Link href="/admin/payments?tab=joining" className="block">
+          <AdminStatCard
+            title="Joining fees"
+            value={formatMoney(paymentSummary.joining)}
+            hint="Once-off fees from prospective members"
+            icon={GraduationCap}
+            accent="blue"
+            loading={isLoading}
+          />
+        </Link>
+        <Link href="/admin/payments" className="block">
+          <AdminStatCard
+            title="Pending payments"
+            value={paymentSummary.pending}
+            hint="Donations and fees waiting on PayChangu"
+            icon={CreditCard}
+            accent="amber"
+            loading={isLoading}
+          />
+        </Link>
+      </section>
+
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
+          { href: "/admin/payments", label: "Review payments", icon: DollarSign },
           { href: "/admin/events", label: "Create event", icon: Calendar },
           { href: "/admin/attendance", label: "Record attendance", icon: ClipboardCheck },
           { href: "/admin/donation-causes", label: "Add a cause", icon: Plus },
@@ -329,8 +416,8 @@ export default function AdminDashboard() {
         ))}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-2">
-        <Card className="rounded-md border-border/60 shadow-sm">
+      <section className="grid min-w-0 gap-6 xl:grid-cols-2">
+        <Card className="min-w-0 rounded-md border-border/60 shadow-sm">
           <CardHeader>
             <CardTitle>Membership growth</CardTitle>
             <CardDescription>Cumulative members through {currentYear}</CardDescription>
@@ -352,7 +439,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-md border-border/60 shadow-sm">
+        <Card className="min-w-0 rounded-md border-border/60 shadow-sm">
           <CardHeader>
             <CardTitle>Donation trends</CardTitle>
             <CardDescription>Completed donations in {currentYear} (MWK)</CardDescription>
@@ -387,15 +474,15 @@ export default function AdminDashboard() {
             ) : eventCategoryData.length === 0 ? (
               <AdminEmptyState icon={Calendar} title="No events yet" description="Create an event to see category analytics." />
             ) : (
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={eventCategoryData} layout="vertical" margin={{ left: 16 }}>
+            <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={eventCategoryData} layout="vertical" margin={{ left: 0, right: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" horizontal={false} />
                   <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12, fill: "#78716C" }} axisLine={false} tickLine={false} />
                   <YAxis
                     dataKey="category"
                     type="category"
-                    width={110}
-                    tick={{ fontSize: 12, fill: "#78716C" }}
+                    width={80}
+                    tick={{ fontSize: 11, fill: "#78716C" }}
                     axisLine={false}
                     tickLine={false}
                   />
@@ -457,11 +544,30 @@ export default function AdminDashboard() {
         </Card>
       </section>
 
+      <Card className="rounded-md border-border/60 shadow-sm">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Recent payments</CardTitle>
+            <CardDescription>
+              {paymentSummary.usingSamples
+                ? "Sample ledger until live PayChangu donations and fees arrive"
+                : "Latest donations, membership fees, and joining fees"}
+            </CardDescription>
+          </div>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/admin/payments">Open ledger</Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? <Skeleton className="h-48 w-full" /> : <PaymentsTable records={paymentRecords.slice(0, 6)} />}
+        </CardContent>
+      </Card>
+
       <section className="grid gap-6 xl:grid-cols-5">
         <Card className="rounded-md border-border/60 shadow-sm xl:col-span-3">
           <CardHeader>
             <CardTitle>Recent activity</CardTitle>
-            <CardDescription>Latest members, donations, and events</CardDescription>
+            <CardDescription>Latest members, donations, fees, and events</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -516,17 +622,17 @@ export default function AdminDashboard() {
               <span className="text-lg font-semibold text-amber-900">{isLoading ? "—" : prospectiveLeos.length}</span>
             </Link>
             <Link
-              href="/admin/donations"
+              href="/admin/payments"
               className="flex items-center justify-between rounded-md border border-sky-200 bg-sky-50 px-4 py-3 transition-colors hover:bg-sky-100"
             >
               <div className="flex items-center gap-3">
                 <DollarSign className="h-4 w-4 text-sky-700" />
                 <div>
-                  <p className="text-sm font-medium text-sky-950">Pending donations</p>
-                  <p className="text-xs text-sky-800">Payments not yet completed</p>
+                  <p className="text-sm font-medium text-sky-950">Pending payments</p>
+                  <p className="text-xs text-sky-800">Donations and fees not yet completed</p>
                 </div>
               </div>
-              <span className="text-lg font-semibold text-sky-900">{isLoading ? "—" : totals.pendingDonations}</span>
+              <span className="text-lg font-semibold text-sky-900">{isLoading ? "—" : paymentSummary.pending}</span>
             </Link>
             <Link
               href="/admin/members"

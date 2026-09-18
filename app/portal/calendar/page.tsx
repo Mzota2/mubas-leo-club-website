@@ -72,8 +72,8 @@ export default function CalendarPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>{monthName}</CardTitle>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="text-lg sm:text-xl">{monthName}</CardTitle>
             <div className="flex gap-2">
               <Button variant="outline" size="icon" onClick={previousMonth}>
                 <ChevronLeft className="h-4 w-4" />
@@ -85,14 +85,15 @@ export default function CalendarPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-7 gap-2 mb-2">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-              <div key={day} className="text-center font-semibold text-sm text-gray-600 p-2">
-                {day}
+          <div className="grid grid-cols-7 gap-1 mb-2 sm:gap-2">
+            {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => (
+              <div key={`${day}-${index}`} className="p-1 text-center text-[11px] font-semibold text-gray-600 sm:p-2 sm:text-sm">
+                <span className="sm:hidden">{day}</span>
+                <span className="hidden sm:inline">{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][index]}</span>
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-7 gap-1 sm:gap-2">
             {Array.from({ length: startingDayOfWeek }).map((_, i) => (
               <div key={`empty-${i}`} className="aspect-square" />
             ))}
@@ -107,19 +108,26 @@ export default function CalendarPage() {
               return (
                 <div
                   key={day}
-                  className={`aspect-square border rounded-lg p-2 hover:bg-gray-50 ${
+                  className={`min-h-10 rounded-md border p-1 sm:min-h-0 sm:aspect-square sm:rounded-lg sm:p-2 hover:bg-gray-50 ${
                     isToday ? "border-leo-primary bg-leo-primary/5" : ""
                   }`}
                 >
-                  <div className="text-sm font-semibold mb-1">{day}</div>
+                  <div className="text-xs font-semibold sm:mb-1 sm:text-sm">{day}</div>
                   {dayEvents.map((event) => (
                     <div
                       key={event.id}
-                      className="text-xs bg-leo-primary/10 text-leo-primary px-1 py-0.5 rounded mb-1 truncate"
+                      className="hidden text-xs bg-leo-primary/10 text-leo-primary px-1 py-0.5 rounded mb-1 truncate sm:block"
                     >
                       {event.title}
                     </div>
                   ))}
+                  {dayEvents.length > 0 ? (
+                    <div className="mt-0.5 flex justify-center gap-0.5 sm:hidden">
+                      {dayEvents.map((event) => (
+                        <span key={event.id} className="h-1.5 w-1.5 rounded-full bg-leo-primary" />
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               )
             })}
@@ -134,12 +142,12 @@ export default function CalendarPage() {
         <CardContent>
           <div className="space-y-4">
             {events.map((event) => (
-              <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center gap-4">
+              <div key={event.id} className="flex flex-col gap-3 p-4 border rounded-lg sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-4">
                   <div className="p-3 rounded-lg bg-leo-primary/10">
                     <CalendarIcon className="h-5 w-5 text-leo-primary" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h3 className="font-semibold mb-1">{event.title}</h3>
                     <p className="text-sm text-gray-600">
                       {event.date.toLocaleDateString("en-US", {
@@ -155,7 +163,7 @@ export default function CalendarPage() {
                 </div>
                 <Button
                   variant={event.attended ? "outline" : "default"}
-                  className={event.attended ? "" : "bg-leo-primary hover:bg-leo-primary-dark"}
+                  className={event.attended ? "w-full sm:w-auto" : "w-full bg-leo-primary hover:bg-leo-primary-dark sm:w-auto"}
                 >
                   {event.attended ? "Attended" : "Mark Attendance"}
                 </Button>

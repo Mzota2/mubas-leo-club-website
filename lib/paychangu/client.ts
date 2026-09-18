@@ -17,6 +17,19 @@ export interface PayChanguPaymentData {
   coverageStart?: string
   coverageEnd?: string
   dueDate?: string
+  items?: Array<{
+    productId: string
+    name: string
+    quantity: number
+    price: number
+    size?: string
+    color?: string
+  }>
+  shippingAddress?: string
+  phone?: string
+  customerName?: string
+  deliveryFee?: number
+  subtotal?: number
   customization?: {
     title?: string
     description?: string
@@ -51,11 +64,15 @@ export async function initiatePayment(data: PayChanguPaymentData): Promise<PayCh
 }
 
 export async function verifyPayment(transactionId: string): Promise<boolean> {
+  const result = await verifyPaymentDetails(transactionId)
+  return result.success
+}
+
+export async function verifyPaymentDetails(transactionId: string) {
   try {
-    const response = await fetch(`/api/payments/verify?transactionId=${transactionId}`)
-    const result = await response.json()
-    return result.success
-  } catch (error) {
-    return false
+    const response = await fetch(`/api/payments/verify?transactionId=${encodeURIComponent(transactionId)}`)
+    return await response.json()
+  } catch {
+    return { success: false, error: "Failed to verify payment" }
   }
 }

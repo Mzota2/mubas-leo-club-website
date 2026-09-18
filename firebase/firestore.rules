@@ -55,11 +55,12 @@ service cloud.firestore {
     }
 
     match /donations/{donationId} {
-      allow read: if isAdminOrLeader();
+      allow read: if isAdminOrLeader()
+        || (signedIn() && resource.data.userId == request.auth.uid)
+        || (signedIn() && resource.data.donorEmail == request.auth.token.email)
+        || (!signedIn() && resource.data.txRef is string);
 
-      // Allow public creation of pending donation records (used by server API route).
-      allow create: if !signedIn()
-        && request.resource.data.paymentStatus == 'pending'
+      allow create: if request.resource.data.paymentStatus == 'pending'
         && request.resource.data.amount is number
         && request.resource.data.amount > 0
         && request.resource.data.donorEmail is string
@@ -68,7 +69,6 @@ service cloud.firestore {
         && request.resource.data.fiscalYear is string
         && request.resource.data.createdAt is string;
 
-      // Allow server callback to update status without auth, but only allow status changes.
       allow update: if !signedIn()
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(['paymentStatus'])
         && request.resource.data.txRef == resource.data.txRef
@@ -77,10 +77,33 @@ service cloud.firestore {
       allow update, delete: if isAdminOrLeader();
     }
 
-    match /orders/{orderId} {
-      allow read: if signedIn() && request.auth.uid == resource.data.userId;
-      allow create: if signedIn() && request.auth.uid == request.resource.data.userId;
+    match /donationCauses/{causeId} {
+      allow read: if true;
+      allow create, delete: if isAdminOrLeader();
       allow update: if isAdminOrLeader();
+      allow update: if !signedIn()
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['currentAmount', 'updatedAt']);
+    }
+
+    match /orders/{orderId} {
+      allow read: if isAdminOrLeader()
+        || (signedIn() && request.auth.uid == resource.data.userId)
+        || (!signedIn() && resource.data.txRef is string);
+
+      allow create: if request.resource.data.paymentStatus == 'pending'
+        && request.resource.data.total is number
+        && request.resource.data.total > 0
+        && request.resource.data.userId is string
+        && request.resource.data.txRef is string
+        && request.resource.data.shippingAddress is string
+        && (!signedIn() || request.auth.uid == request.resource.data.userId);
+
+      allow update: if isAdminOrLeader();
+      allow update: if !signedIn()
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['paymentStatus', 'status', 'updatedAt'])
+        && request.resource.data.txRef == resource.data.txRef
+        && request.resource.data.paymentStatus in ['paid', 'pending', 'failed']
+        && request.resource.data.status in ['pending', 'processing', 'completed', 'cancelled'];
       allow delete: if false;
     }
 
@@ -91,7 +114,9 @@ service cloud.firestore {
     }
 
     match /membershipFees/{feeId} {
-      allow read: if isAdminOrLeader() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow read: if isAdminOrLeader()
+        || (signedIn() && resource.data.userId == request.auth.uid)
+        || (!signedIn() && resource.data.txRef is string);
       allow create: if isAdminOrLeader() || (
         signedIn()
         && request.resource.data.userId == request.auth.uid

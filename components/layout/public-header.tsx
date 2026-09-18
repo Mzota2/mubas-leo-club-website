@@ -51,9 +51,9 @@ export function PublicHeader() {
           : "bg-white/95 backdrop-blur-sm border-b border-gray-100"
       }`}
     >
-      <div className="container flex h-16 md:h-20 items-center justify-between px-4 md:px-6 max-w-7xl mx-auto">
-        <Link href="/">
-          <Logo size="lg" className="group" />
+      <div className="container flex h-14 md:h-20 items-center justify-between gap-2 px-3 md:px-6 max-w-7xl mx-auto">
+        <Link href="/" className="min-w-0 shrink">
+          <Logo size="lg" className="group" textClassName="hidden lg:inline" />
         </Link>
 
         {/* Desktop Navigation */}
@@ -69,7 +69,7 @@ export function PublicHeader() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex shrink-0 items-center gap-1.5 md:gap-3">
           {!loading && user && firebaseUser ? (
             <>
               <DropdownMenu>
@@ -159,17 +159,18 @@ export function PublicHeader() {
           )}
           <Button
             asChild
-            className="bg-leo-primary hover:bg-leo-primary-dark text-white shadow-md hover:shadow-lg transition-all duration-300"
+            size="sm"
+            className="bg-leo-primary hover:bg-leo-primary-dark text-white shadow-md hover:shadow-lg transition-all duration-300 md:h-9 md:px-4"
           >
             <Link href="/donate" className="flex items-center gap-2">
               <Heart className="h-4 w-4" />
-              <span className="hidden md:inline">Donate</span>
+              <span className="hidden sm:inline">Donate</span>
             </Link>
           </Button>
 
           {/* Mobile menu button */}
           <button
-            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            className="lg:hidden p-2 rounded-md hover:bg-gray-100 transition-colors"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle menu"
           >
@@ -180,7 +181,7 @@ export function PublicHeader() {
 
       {/* Mobile Navigation */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t bg-white/98 backdrop-blur-md animate-in slide-in-from-top duration-300">
+        <div className="lg:hidden max-h-[calc(100dvh-3.5rem)] overflow-y-auto border-t bg-white/98 backdrop-blur-md animate-in slide-in-from-top duration-300">
           <nav className="container flex flex-col gap-1 py-4 px-4">
             {navLinks.map((link) => (
               <Link

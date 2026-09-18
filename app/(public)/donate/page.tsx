@@ -1,7 +1,6 @@
 "use client"
 
-import { useState } from "react"
-import Image from "next/image"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,6 +9,8 @@ import { Heart, DollarSign, ArrowRight, CheckCircle2, Loader2, Target } from "lu
 import { initiatePayment } from "@/lib/paychangu/client"
 import { useToast } from "@/hooks/use-toast"
 import { useDonationCauses } from "@/lib/hooks/use-donation-causes"
+import { useAuth } from "@/lib/hooks/use-auth"
+import { DEFAULT_DONATION_CAUSES } from "@/lib/payments/defaults"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 
@@ -20,11 +21,19 @@ export default function DonatePage() {
   const [email, setEmail] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const { toast } = useToast()
+  const { user } = useAuth()
   const { data: causes, isLoading: causesLoading } = useDonationCauses(true)
+
+  const liveCauses = causes && causes.length > 0 ? causes : DEFAULT_DONATION_CAUSES
+  const usingDefaultCauses = !causesLoading && (!causes || causes.length === 0)
 
   const presetAmounts = [5000, 10000, 25000, 50000, 100000]
 
-  const selectedCauseData = causes?.find((c) => c.id === selectedCause)
+  const selectedCauseData = liveCauses.find((c) => c.id === selectedCause)
+
+  useEffect(() => {
+    if (user?.email && !email) setEmail(user.email)
+  }, [email, user?.email])
 
   const handleDonate = async () => {
     if (!selectedCause) {
@@ -66,10 +75,11 @@ export default function DonatePage() {
       const result = await initiatePayment({
         amount: parseFloat(donationAmount),
         email: email,
-        firstName: firstName,
-        lastName: lastName,
+        firstName: user?.firstName || firstName,
+        lastName: user?.lastName || lastName,
         currency: "MWK",
         purpose: "donation",
+        userId: user?.id,
         causeId: selectedCause,
         causeTitle: selectedCauseData?.title,
         returnUrl: `${window.location.origin}/donate/return`,
@@ -100,15 +110,15 @@ export default function DonatePage() {
   }
 
   return (
-    <div className="py-16 bg-gradient-to-b from-gray-50 to-white">
+    <div className="py-10 md:py-16 bg-gradient-to-b from-gray-50 to-white">
       <div className="container px-4 max-w-7xl mx-auto">
         {/* Hero Section */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-leo-primary mb-6">
-            <Heart className="h-10 w-10 text-white" />
+        <div className="text-center mb-10 md:mb-16">
+          <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-leo-primary mb-6">
+            <Heart className="h-8 w-8 md:h-10 md:w-10 text-white" />
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold mb-4 text-gray-900">Support Our Causes</h1>
-          <p className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto">
+          <h1 className="text-3xl md:text-6xl font-bold mb-4 text-gray-900">Support Our Causes</h1>
+          <p className="text-base md:text-2xl text-gray-600 max-w-3xl mx-auto">
             Choose a cause that matters to you and make a difference. Every contribution helps us create lasting impact in our community.
           </p>
         </div>
@@ -116,6 +126,11 @@ export default function DonatePage() {
         {/* Cause Selection */}
         <div className="mb-12">
           <Label className="text-lg font-semibold mb-4 block">Select a Cause to Support</Label>
+          {usingDefaultCauses ? (
+            <p className="mb-4 text-sm text-muted-foreground">
+              Showing default causes until the admin publishes live fundraising campaigns.
+            </p>
+          ) : null}
           {causesLoading ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3].map((i) => (
@@ -127,9 +142,9 @@ export default function DonatePage() {
                 </Card>
               ))}
             </div>
-          ) : causes && causes.length > 0 ? (
+          ) : liveCauses.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {causes.map((cause) => (
+              {liveCauses.map((cause) => (
                 <Card
                   key={cause.id}
                   className={`cursor-pointer transition-all hover:shadow-lg ${
@@ -140,8 +155,8 @@ export default function DonatePage() {
                   onClick={() => setSelectedCause(cause.id)}
                 >
                   <CardHeader>
-                    <div className="flex items-start justify-between mb-2">
-                      <CardTitle className="text-lg">{cause.title}</CardTitle>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <CardTitle className="min-w-0 text-lg">{cause.title}</CardTitle>
                       {selectedCause === cause.id && (
                         <Badge className="bg-leo-primary text-white">
                           <CheckCircle2 className="h-3 w-3 mr-1" />
@@ -200,7 +215,7 @@ export default function DonatePage() {
               <CardContent className="space-y-6">
                 <div>
                   <Label className="text-base font-semibold mb-4 block">Select Amount (MWK)</Label>
-                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 mb-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 mb-4">
                     {presetAmounts.map((preset) => (
                       <button
                         key={preset}
@@ -210,7 +225,7 @@ export default function DonatePage() {
                           setCustomAmount("")
                         }}
                         disabled={isProcessing}
-                        className={`p-4 rounded-lg border-2 font-semibold transition-all text-sm ${
+                        className={`p-3 sm:p-4 rounded-lg border-2 font-semibold transition-all text-sm ${
                           amount === preset.toString()
                             ? "border-leo-primary bg-leo-primary text-white scale-105 shadow-lg"
                             : "border-gray-200 hover:border-leo-primary hover:shadow-md"

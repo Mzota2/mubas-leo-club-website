@@ -22,12 +22,12 @@ export default function MembershipPage() {
   ]
 
   return (
-    <div className="py-16">
+    <div className="py-10 md:py-16">
       <div className="container px-4 max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Join MUBAS Leo Club</h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <h1 className="text-3xl md:text-5xl font-bold mb-4">Join MUBAS Leo Club</h1>
+          <p className="text-base md:text-xl text-gray-600 max-w-3xl mx-auto">
             Become part of a dynamic community of young leaders committed to making a difference
           </p>
         </div>

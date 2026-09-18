@@ -73,11 +73,11 @@ export default function ServicesPage() {
   ]
 
   return (
-    <div className="py-16">
+    <div className="py-10 md:py-16">
       <div className="container px-4 max-w-7xl mx-auto">
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Our Services</h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <h1 className="text-3xl md:text-5xl font-bold mb-4">Our Services</h1>
+          <p className="text-base md:text-xl text-gray-600 max-w-3xl mx-auto">
             Discover the various ways we serve our community and develop future leaders
           </p>
         </div>
@@ -88,7 +88,7 @@ export default function ServicesPage() {
               <CardHeader>
                 <div className="flex items-center gap-3 mb-2">
                   <service.icon className={`h-10 w-10 ${service.color}`} />
-                  <CardTitle className="text-2xl">{service.title}</CardTitle>
+                  <CardTitle className="text-xl md:text-2xl">{service.title}</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>

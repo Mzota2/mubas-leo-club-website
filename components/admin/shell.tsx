@@ -156,7 +156,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const page = getAdminPageMeta(pathname)
 
   return (
-    <div className="min-h-screen bg-[#F6F3EE] [&_[data-slot=card]]:!rounded-md">
+    <div className="min-h-dvh overflow-x-clip bg-[#F6F3EE] [&_[data-slot=card]]:!rounded-md">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-neutral-200 bg-white lg:flex lg:flex-col">
         <NavContent />
       </aside>
@@ -172,12 +172,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
       <div className="lg:pl-64">
         <header className="sticky top-0 z-30 border-b border-neutral-200/80 bg-white/90 backdrop-blur-md">
-          <div className="flex h-16 items-center justify-between gap-3 px-4 md:px-8">
-            <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-14 items-center justify-between gap-2 px-3 sm:h-16 sm:gap-3 md:px-8">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden"
+                className="shrink-0 lg:hidden"
                 onClick={() => setMobileOpen(true)}
                 aria-label="Open navigation"
               >
@@ -185,23 +185,23 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               </Button>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-neutral-900">{page.label}</p>
-                <p className="hidden truncate text-xs text-muted-foreground sm:block">{page.description}</p>
+                <p className="hidden truncate text-xs text-muted-foreground md:block">{page.description}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
               <WorkspaceSwitcher current="admin" className="hidden sm:inline-flex" />
               <WorkspaceSwitcher current="admin" compact className="sm:hidden" />
-              <Badge variant="secondary" className="hidden capitalize sm:inline-flex">
+              <Badge variant="secondary" className="hidden capitalize md:inline-flex">
                 {user?.role}
               </Badge>
-              <Separator orientation="vertical" className="hidden h-6 sm:block" />
+              <Separator orientation="vertical" className="hidden h-6 md:block" />
               <UserMenu />
             </div>
           </div>
         </header>
 
-        <main className="px-4 py-6 md:px-8 md:py-8">{children}</main>
+        <main className="min-w-0 px-3 py-5 sm:px-4 sm:py-6 md:px-8 md:py-8">{children}</main>
       </div>
     </div>
   )

@@ -12,7 +12,7 @@ export default function HomePage() {
   return (
     <div className="flex flex-col">
       {/* Hero Section with Video/Image Background */}
-      <section className="relative h-screen min-h-[600px] max-h-[900px] flex items-center justify-center overflow-hidden">
+      <section className="relative flex min-h-[100svh] max-h-[900px] items-center justify-center overflow-hidden py-24">
         {/* Background Image/Video */}
         <div className="absolute inset-0 z-0">
           <Image
@@ -41,17 +41,17 @@ export default function HomePage() {
         {/* Hero Content */}
         <div className="container relative z-20 px-4 text-center text-white max-w-7xl mx-auto">
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-6 text-balance leading-tight animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            <h1 className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-bold mb-4 sm:mb-6 text-balance leading-tight animate-in fade-in slide-in-from-bottom-4 duration-1000">
               We are serving a world in need.
             </h1>
-            <p className="text-xl md:text-2xl lg:text-3xl mb-4 max-w-3xl mx-auto text-pretty font-light animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-300">
+            <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl mb-3 sm:mb-4 max-w-3xl mx-auto text-pretty font-light animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-300">
               One act of kindness at a time.
             </p>
-            <p className="text-lg md:text-xl mb-10 max-w-2xl mx-auto text-white/90 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-500">
+            <p className="text-sm sm:text-lg md:text-xl mb-8 sm:mb-10 max-w-2xl mx-auto text-white/90 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-500">
               Join MUBAS Leo Club in making a difference through community service and youth development
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-700">
-              <Button asChild size="lg" className="text-base px-8 py-6 bg-white text-leo-primary hover:bg-gray-100 font-semibold">
+              <Button asChild size="lg" className="w-full text-base px-8 py-6 bg-white text-leo-primary hover:bg-gray-100 font-semibold sm:w-auto">
                 <Link href="/membership">
                   Join Us
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -61,7 +61,7 @@ export default function HomePage() {
                 asChild
                 size="lg"
                 variant="outline"
-                className="text-base px-8 py-6 bg-white/10 text-white border-2 border-white hover:bg-white hover:text-leo-primary font-semibold backdrop-blur-sm"
+                className="w-full text-base px-8 py-6 bg-white/10 text-white border-2 border-white hover:bg-white hover:text-leo-primary font-semibold backdrop-blur-sm sm:w-auto"
               >
                 <Link href="/events">View Events</Link>
               </Button>
@@ -70,7 +70,7 @@ export default function HomePage() {
         </div>
 
         {/* Scroll Indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 animate-bounce">
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 hidden animate-bounce sm:block">
           <div className="w-6 h-10 border-2 border-white/50 rounded-full flex items-start justify-center p-2">
             <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
           </div>
@@ -78,15 +78,15 @@ export default function HomePage() {
       </section>
 
       {/* Statistics Section */}
-      <section className="py-20 bg-white">
+      <section className="py-12 md:py-20 bg-white">
         <div className="container px-4 max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">Making a Global Impact</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <h2 className="text-3xl md:text-5xl font-bold mb-4 text-gray-900">Making a Global Impact</h2>
+            <p className="text-base md:text-xl text-gray-600 max-w-2xl mx-auto">
               Together, we're creating positive change in our communities
             </p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-12">
             {[
               { number: "500+", label: "Active Members", icon: Users },
               { number: "100+", label: "Service Projects", icon: Heart },
@@ -98,10 +98,10 @@ export default function HomePage() {
                 className="text-center animate-in fade-in slide-in-from-bottom-4"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-leo-primary mb-4">
-                  <stat.icon className="h-8 w-8 text-white" />
+                <div className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-full bg-gradient-leo-primary mb-4">
+                  <stat.icon className="h-6 w-6 md:h-8 md:w-8 text-white" />
                 </div>
-                <div className="text-4xl md:text-5xl font-bold text-leo-primary mb-2">{stat.number}</div>
+                <div className="text-2xl sm:text-4xl md:text-5xl font-bold text-leo-primary mb-2">{stat.number}</div>
                 <div className="text-gray-600 font-medium">{stat.label}</div>
               </div>
             ))}
@@ -110,11 +110,11 @@ export default function HomePage() {
       </section>
 
       {/* Uniting for Good Section */}
-      <section className="py-20 bg-gradient-to-b from-gray-50 to-white">
+      <section className="py-12 md:py-20 bg-gradient-to-b from-gray-50 to-white">
         <div className="container px-4 max-w-7xl mx-auto">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-4xl md:text-5xl font-bold mb-6 text-gray-900">Uniting for Good</h2>
+              <h2 className="text-3xl md:text-5xl font-bold mb-6 text-gray-900">Uniting for Good</h2>
               <p className="text-lg text-gray-700 leading-relaxed mb-6">
                 Lions and Leos make a difference every day, everywhere we serve. With the support of our international
                 association and our global foundation, we are changing lives, communities and the world we share.
@@ -126,7 +126,7 @@ export default function HomePage() {
                 </Link>
               </Button>
             </div>
-            <div className="relative h-[400px] rounded-lg overflow-hidden shadow-xl">
+            <div className="relative h-56 md:h-[400px] rounded-lg overflow-hidden shadow-xl">
               <Image
                 src={media.photos.homeHero}
                 alt="Leo Club members serving the community"
@@ -140,11 +140,11 @@ export default function HomePage() {
       </section>
 
       {/* Serving with Purpose Section */}
-      <section className="py-20 bg-white">
+      <section className="py-12 md:py-20 bg-white">
         <div className="container px-4 max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">Serving with Purpose</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <div className="text-center mb-10 md:mb-16">
+            <h2 className="text-3xl md:text-5xl font-bold mb-4 text-gray-900">Serving with Purpose</h2>
+            <p className="text-base md:text-xl text-gray-600 max-w-3xl mx-auto">
               Lions serve their local communities in so many ways, and we're uniting to serve key global causes and
               special initiatives to address some of the greatest challenges facing our world today.
             </p>
@@ -198,11 +198,11 @@ export default function HomePage() {
       </section>
 
       {/* Shop Section - Prominently Featured */}
-      <section className="py-20 bg-gradient-to-b from-gray-50 to-white">
+      <section className="py-12 md:py-20 bg-gradient-to-b from-gray-50 to-white">
         <div className="container px-4 max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-12">
             <div>
-              <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">Shop & Support</h2>
+              <h2 className="text-3xl md:text-5xl font-bold mb-4 text-gray-900">Shop & Support</h2>
               <p className="text-lg text-gray-600 max-w-2xl">
                 Shop our exclusive Leo Club merchandise and support our fundraising efforts. All proceeds go directly to community service projects.
               </p>
@@ -257,11 +257,11 @@ export default function HomePage() {
       </section>
 
       {/* Upcoming Events Preview */}
-      <section className="py-20 bg-gradient-to-b from-white to-gray-50">
+      <section className="py-12 md:py-20 bg-gradient-to-b from-white to-gray-50">
         <div className="container px-4 max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-12">
             <div>
-              <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">Upcoming Events</h2>
+              <h2 className="text-3xl md:text-5xl font-bold mb-4 text-gray-900">Upcoming Events</h2>
               <p className="text-lg text-gray-600 max-w-2xl">
                 Join us in our various community service activities and make a lasting impact
               </p>
@@ -322,17 +322,17 @@ export default function HomePage() {
       </section>
 
       {/* Impact Stories Section */}
-      <section className="py-20 bg-white">
+      <section className="py-12 md:py-20 bg-white">
         <div className="container px-4 max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">Our Impact</h2>
+            <h2 className="text-3xl md:text-5xl font-bold mb-4 text-gray-900">Our Impact</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               See how we're making a difference in communities across Malawi
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 mb-12">
-            <div className="relative h-[400px] rounded-lg overflow-hidden shadow-xl">
+            <div className="relative h-56 md:h-[400px] rounded-lg overflow-hidden shadow-xl">
               <Image
                 src={media.photos.cleanup}
                 alt="Community cleanup volunteers"
@@ -341,7 +341,7 @@ export default function HomePage() {
               />
             </div>
             <div className="flex flex-col justify-center">
-              <h3 className="text-3xl font-bold mb-4 text-gray-900">Transforming Communities</h3>
+              <h3 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900">Transforming Communities</h3>
               <p className="text-lg text-gray-700 leading-relaxed mb-6">
                 Through our dedicated members and volunteers, we've organized hundreds of service projects that have
                 directly impacted thousands of lives. From health initiatives to environmental conservation, we're
@@ -367,20 +367,20 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 gradient-leo-primary text-white relative overflow-hidden">
+      <section className="py-16 md:py-24 gradient-leo-primary text-white relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
           }} />
         </div>
         <div className="container px-4 text-center relative z-10 max-w-7xl mx-auto">
-          <h2 className="text-4xl md:text-6xl font-bold mb-6">Ready to Make a Difference?</h2>
-          <p className="text-xl md:text-2xl mb-10 max-w-3xl mx-auto text-white/90">
+          <h2 className="text-3xl md:text-6xl font-bold mb-6">Ready to Make a Difference?</h2>
+          <p className="text-base md:text-2xl mb-10 max-w-3xl mx-auto text-white/90">
             Join our community of young leaders dedicated to serving and transforming lives. Together, we can create a
             better world.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button asChild size="lg" className="text-base px-8 py-6 bg-white text-leo-primary hover:bg-gray-100 font-semibold">
+            <Button asChild size="lg" className="w-full text-base px-8 py-6 bg-white text-leo-primary hover:bg-gray-100 font-semibold sm:w-auto">
               <Link href="/membership">
                 Join Us
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -390,7 +390,7 @@ export default function HomePage() {
               asChild
               size="lg"
               variant="outline"
-              className="text-base px-8 py-6 bg-white/10 text-white border-2 border-white hover:bg-white hover:text-leo-primary font-semibold backdrop-blur-sm"
+              className="w-full text-base px-8 py-6 bg-white/10 text-white border-2 border-white hover:bg-white hover:text-leo-primary font-semibold backdrop-blur-sm sm:w-auto"
             >
               <Link href="/donate">Support Our Cause</Link>
             </Button>

@@ -20,7 +20,7 @@ export default function JoinFeePage() {
   const { user } = useAuth()
   const { toast } = useToast()
   const { data: settings } = usePlatformSettings()
-  const { data: fees = [] } = useMembershipFees(user?.id)
+  const { data: fees = [] } = useMembershipFees(user?.id, true)
   const billing = billingFromSettings(settings)
   const [paying, setPaying] = useState(false)
   const paid = user ? hasPaidJoiningFee(fees, user.id, user) : false
@@ -112,6 +112,10 @@ export default function JoinFeePage() {
         Already paid outside the platform? Ask an admin to mark your joining fee as paid.{" "}
         <Link href="/portal/training" className="underline">
           View training
+        </Link>
+        {" · "}
+        <Link href="/portal/payments" className="underline">
+          Payment receipts
         </Link>
       </p>
     </div>

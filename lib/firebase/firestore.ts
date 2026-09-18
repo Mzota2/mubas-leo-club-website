@@ -13,10 +13,15 @@ import {
   Timestamp,
   addDoc,
   writeBatch,
+  increment,
   type QueryConstraint,
 } from "firebase/firestore"
 import { db } from "./config"
 import type { User, Event, Product, Order, Donation, Notification, Leader, Training, GalleryImage, PlatformSettings, DonationCause, MembershipFee, Meeting, Attendance, TrainingModule, TrainingProgress } from "@/lib/types"
+
+function omitUndefined<T extends Record<string, unknown>>(data: T) {
+  return Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined)) as T
+}
 import { generateLeoId } from "@/lib/utils/leo-id"
 
 // User operations
@@ -105,23 +110,40 @@ export async function getProduct(productId: string): Promise<Product | null> {
 
 // Order operations
 export async function createOrder(orderData: Omit<Order, "id">) {
+  const now = Timestamp.now().toDate().toISOString()
   const docRef = await addDoc(collection(db, "orders"), {
-    ...orderData,
-    createdAt: Timestamp.now().toDate().toISOString(),
-    updatedAt: Timestamp.now().toDate().toISOString(),
+    ...omitUndefined(orderData as Record<string, unknown>),
+    createdAt: orderData.createdAt || now,
+    updatedAt: now,
   })
   return docRef.id
 }
 
-export async function getUserOrders(userId: string) {
-  const ordersQuery = query(collection(db, "orders"), where("userId", "==", userId), orderBy("createdAt", "desc"))
+export async function getOrders(userId?: string) {
+  const ordersQuery = userId
+    ? query(collection(db, "orders"), where("userId", "==", userId))
+    : query(collection(db, "orders"))
   const ordersSnapshot = await getDocs(ordersQuery)
-  return ordersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Order)
+  return ordersSnapshot.docs
+    .map((item) => ({ id: item.id, ...item.data() }) as Order)
+    .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
+}
+
+export async function getUserOrders(userId: string) {
+  return getOrders(userId)
+}
+
+export async function getOrderByTxRef(txRef: string): Promise<Order | null> {
+  const ordersQuery = query(collection(db, "orders"), where("txRef", "==", txRef))
+  const snapshot = await getDocs(ordersQuery)
+  if (snapshot.empty) return null
+  const item = snapshot.docs[0]
+  return { id: item.id, ...item.data() } as Order
 }
 
 export async function updateOrder(orderId: string, orderData: Partial<Order>) {
   await updateDoc(doc(db, "orders", orderId), {
-    ...orderData,
+    ...omitUndefined(orderData as Record<string, unknown>),
     updatedAt: Timestamp.now().toDate().toISOString(),
   })
 }
@@ -129,7 +151,7 @@ export async function updateOrder(orderId: string, orderData: Partial<Order>) {
 // Donation operations
 export async function createDonation(donationData: Omit<Donation, "id" | "createdAt">) {
   const docRef = await addDoc(collection(db, "donations"), {
-    ...donationData,
+    ...omitUndefined(donationData as Record<string, unknown>),
     createdAt: Timestamp.now().toDate().toISOString(),
   })
   return docRef.id
@@ -142,7 +164,44 @@ export async function getDonations(fiscalYear?: string) {
   }
   const donationsQuery = query(collection(db, "donations"), ...constraints)
   const donationsSnapshot = await getDocs(donationsQuery)
-  return donationsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Donation)
+  return donationsSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as Donation)
+}
+
+export async function getDonationByTxRef(txRef: string): Promise<Donation | null> {
+  const donationsQuery = query(collection(db, "donations"), where("txRef", "==", txRef))
+  const snapshot = await getDocs(donationsQuery)
+  if (snapshot.empty) return null
+  const item = snapshot.docs[0]
+  return { id: item.id, ...item.data() } as Donation
+}
+
+export async function getDonationsForUser(userId: string, email?: string) {
+  const byUser = query(collection(db, "donations"), where("userId", "==", userId))
+  const userSnapshot = await getDocs(byUser)
+  const donations = userSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as Donation)
+
+  if (email) {
+    try {
+      const byEmail = query(collection(db, "donations"), where("donorEmail", "==", email))
+      const emailSnapshot = await getDocs(byEmail)
+      for (const item of emailSnapshot.docs) {
+        if (!donations.some((donation) => donation.id === item.id)) {
+          donations.push({ id: item.id, ...item.data() } as Donation)
+        }
+      }
+    } catch {
+      // Email lookup is best-effort if a donor record has no userId.
+    }
+  }
+
+  return donations.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
+}
+
+export async function incrementDonationCauseAmount(causeId: string, amount: number) {
+  await updateDoc(doc(db, "donationCauses", causeId), {
+    currentAmount: increment(amount),
+    updatedAt: Timestamp.now().toDate().toISOString(),
+  })
 }
 
 // Donation Cause operations
@@ -203,7 +262,7 @@ export async function getMembershipFeeByTxRef(txRef: string): Promise<Membership
 
 export async function createMembershipFee(feeData: Omit<MembershipFee, "id">) {
   const docRef = await addDoc(collection(db, "membershipFees"), {
-    ...feeData,
+    ...omitUndefined(feeData as Record<string, unknown>),
     createdAt: Timestamp.now().toDate().toISOString(),
   })
   return docRef.id

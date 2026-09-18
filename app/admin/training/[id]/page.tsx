@@ -125,9 +125,9 @@ export default function AdminTrainingModulePage({ params }: { params: Promise<{ 
       </section>
 
       <section className="space-y-4 rounded-md border bg-white p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="font-semibold">Learning resources</h2>
-          <Button type="button" variant="outline" size="sm" onClick={addResource}>
+          <Button type="button" variant="outline" size="sm" onClick={addResource} className="w-full sm:w-auto">
             <Plus className="h-4 w-4" />
             Add resource
           </Button>
@@ -214,9 +214,9 @@ export default function AdminTrainingModulePage({ params }: { params: Promise<{ 
       </section>
 
       <section className="space-y-4 rounded-md border bg-white p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="font-semibold">Module quiz</h2>
-          <Button type="button" variant="outline" size="sm" onClick={addQuestion}>
+          <Button type="button" variant="outline" size="sm" onClick={addQuestion} className="w-full sm:w-auto">
             <Plus className="h-4 w-4" />
             Add question
           </Button>

@@ -9,7 +9,7 @@ export function PortalNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#F59E0B] lg:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-black/5 bg-[#F59E0B] pb-[env(safe-area-inset-bottom)] lg:hidden">
       <div className="mx-auto flex h-16 max-w-lg items-center justify-around px-2">
         {portalMobileNav.map((item) => {
           const active = isPortalNavActive(pathname, item.href, item.match)

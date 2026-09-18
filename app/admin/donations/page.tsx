@@ -1,8 +1,10 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar, DollarSign, Search, Users } from "lucide-react"
@@ -11,8 +13,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 import { AdminPageHeader } from "@/components/admin/page-header"
 import { AdminStatCard } from "@/components/admin/stat-card"
+import { ReceiptButton } from "@/components/payments/receipt-button"
+import { donationToRecord } from "@/lib/payments/receipt"
 import { useDonations } from "@/lib/hooks/use-donations"
+import { SAMPLE_PAYMENTS } from "@/lib/payments/defaults"
 import { formatDate, formatMoney } from "@/lib/utils/format"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { Donation } from "@/lib/types"
 
 export default function DonationsPage() {
@@ -23,9 +29,27 @@ export default function DonationsPage() {
   const now = new Date()
   const currentYear = now.getFullYear()
   const currentMonth = now.getMonth()
+  const usingSamples = !isLoading && (donations ?? []).length === 0
+
+  const donationList = useMemo((): Donation[] => {
+    if ((donations ?? []).length > 0) return donations ?? []
+    return SAMPLE_PAYMENTS.filter((record) => record.kind === "donation").map((record) => ({
+      id: record.id,
+      amount: record.amount,
+      donorName: record.payerName,
+      donorEmail: record.payerEmail || "",
+      causeTitle: record.title,
+      txRef: record.txRef,
+      currency: record.currency,
+      paymentStatus: record.status === "paid" ? "completed" : record.status === "failed" ? "failed" : "pending",
+      fiscalYear: `${currentYear}/${currentYear + 1}`,
+      createdAt: record.date,
+      message: record.detail,
+    }))
+  }, [donations, currentYear])
 
   const stats = useMemo(() => {
-    const list: Donation[] = donations ?? []
+    const list: Donation[] = donationList
     const completed = list.filter((donation) => donation.paymentStatus === "completed")
 
     const totalThisYear = completed.reduce((sum, donation) => {
@@ -42,10 +66,10 @@ export default function DonationsPage() {
     const pending = list.filter((donation) => donation.paymentStatus === "pending").length
 
     return { totalThisYear, thisMonth, totalDonors, pending }
-  }, [donations, currentYear, currentMonth])
+  }, [donationList, currentYear, currentMonth])
 
   const yearlyData = useMemo(() => {
-    const completed = (donations ?? []).filter((donation) => donation.paymentStatus === "completed")
+    const completed = donationList.filter((donation) => donation.paymentStatus === "completed")
     const grouped: Record<string, number> = {}
     for (const donation of completed) {
       const year = new Date(donation.createdAt).getFullYear().toString()
@@ -55,11 +79,11 @@ export default function DonationsPage() {
     return Object.entries(grouped)
       .map(([year, amount]) => ({ year, amount }))
       .sort((a, b) => Number(a.year) - Number(b.year))
-  }, [donations])
+  }, [donationList])
 
   const recentDonations = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
-    return [...(donations ?? [])]
+    return [...donationList]
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .filter((donation) => (statusFilter === "all" ? true : donation.paymentStatus === statusFilter))
       .filter((donation) => {
@@ -71,11 +95,28 @@ export default function DonationsPage() {
           donation.txRef?.toLowerCase().includes(query)
         )
       })
-  }, [donations, searchQuery, statusFilter])
+  }, [donationList, searchQuery, statusFilter])
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader title="Donations" description="Track completed gifts, pending payments, and yearly fundraising trends." />
+      <AdminPageHeader
+        title="Donations"
+        description="Track completed gifts, pending payments, and yearly fundraising trends."
+        actions={
+          <Button asChild variant="outline">
+            <Link href="/admin/payments">All payments</Link>
+          </Button>
+        }
+      />
+
+      {usingSamples ? (
+        <Alert>
+          <AlertDescription>
+            Showing sample donations until live PayChangu gifts arrive. Open the payments ledger for membership and joining
+            fees too.
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <AdminStatCard
@@ -162,12 +203,13 @@ export default function DonationsPage() {
                   <TableHead>Amount</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Receipt</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={6}>
+                    <TableCell colSpan={7}>
                       <div className="space-y-2 py-2">
                         <Skeleton className="h-10 w-full" />
                         <Skeleton className="h-10 w-full" />
@@ -177,7 +219,7 @@ export default function DonationsPage() {
                   </TableRow>
                 ) : recentDonations.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
                       No donations found.
                     </TableCell>
                   </TableRow>
@@ -208,6 +250,9 @@ export default function DonationsPage() {
                         >
                           {donation.paymentStatus}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <ReceiptButton record={donationToRecord(donation)} />
                       </TableCell>
                     </TableRow>
                   ))

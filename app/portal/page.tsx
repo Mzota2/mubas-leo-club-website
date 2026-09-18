@@ -20,14 +20,20 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { useEvents } from "@/lib/hooks/use-events"
+import { useMyDonations } from "@/lib/hooks/use-donations"
+import { useMembershipFees } from "@/lib/hooks/use-membership-fees"
 import { PromoCarousel } from "@/components/shop/promo-carousel"
 import { canAccessAdmin } from "@/components/portal/nav-config"
 import { promoSlides } from "@/lib/media"
-import { formatDate, greetingForHour } from "@/lib/utils/format"
+import { SAMPLE_PAYMENTS } from "@/lib/payments/defaults"
+import { donationToRecord, feeToRecord, paymentTotals } from "@/lib/payments/receipt"
+import { formatDate, formatMoney, greetingForHour } from "@/lib/utils/format"
 
 export default function PortalDashboard() {
   const { user } = useAuth()
   const { data: events } = useEvents()
+  const { data: donations = [] } = useMyDonations(user?.id, user?.email)
+  const { data: fees = [] } = useMembershipFees(user?.id, true)
   const now = new Date()
   const isProspectiveLeo = user?.membershipType === "prospective-leo"
   const isLeo = user?.membershipType === "leo"
@@ -39,6 +45,18 @@ export default function PortalDashboard() {
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .slice(0, 3)
   }, [events])
+
+  const paymentRecords = useMemo(() => {
+    const live = [
+      ...donations
+        .filter((donation) => donation.userId === user?.id || donation.donorEmail?.toLowerCase() === user?.email?.toLowerCase())
+        .map(donationToRecord),
+      ...fees.map((fee) => feeToRecord(fee, user)),
+    ].sort((a, b) => b.date.localeCompare(a.date))
+    return live.length > 0 ? live : SAMPLE_PAYMENTS.filter((record) => record.status === "paid").slice(0, 3)
+  }, [donations, fees, user])
+
+  const payments = paymentTotals(paymentRecords)
 
   const dateLabel = now.toLocaleDateString("en-GB", {
     weekday: "long",
@@ -133,9 +151,10 @@ export default function PortalDashboard() {
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-600">Quick links</h2>
               </div>
-              <div className="grid grid-cols-3 gap-3 lg:grid-cols-6">
+              <div className="grid grid-cols-3 gap-3 lg:grid-cols-4">
                 {[
                   { href: "/portal/training", label: "Training", icon: Award, tone: "from-[#F59E0B] to-[#DC2626]" },
+                  { href: "/portal/payments", label: "Payments", icon: CreditCard, tone: "from-[#92400E] to-[#B45309]" },
                   { href: "/portal/membership", label: "Membership", icon: Users, tone: "from-[#92400E] to-[#B45309]" },
                   { href: "/donate", label: "Donate", icon: Heart, tone: "from-[#F59E0B] to-[#DC2626]" },
                   { href: "/portal/club", label: "My club", icon: Users, tone: "from-[#DC2626] to-[#991B1B]" },
@@ -197,6 +216,50 @@ export default function PortalDashboard() {
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-md border-none bg-white shadow-sm">
+            <CardContent>
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="font-semibold">Your payments</h2>
+                <Link href="/portal/payments" className="text-sm font-medium text-leo-primary">
+                  View all
+                </Link>
+              </div>
+              <div className="mb-3 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-md bg-amber-50 p-2">
+                  <p className="text-[11px] text-neutral-500">Donations</p>
+                  <p className="text-xs font-semibold">{formatMoney(payments.donations)}</p>
+                </div>
+                <div className="rounded-md bg-amber-50 p-2">
+                  <p className="text-[11px] text-neutral-500">Membership</p>
+                  <p className="text-xs font-semibold">{formatMoney(payments.membership)}</p>
+                </div>
+                <div className="rounded-md bg-amber-50 p-2">
+                  <p className="text-[11px] text-neutral-500">Joining</p>
+                  <p className="text-xs font-semibold">{formatMoney(payments.joining)}</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {paymentRecords.slice(0, 3).map((record) => (
+                  <Link
+                    key={record.id}
+                    href="/portal/payments"
+                    className="block rounded-md border border-border/60 p-3 transition-colors hover:bg-amber-50"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{record.title}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {formatDate(record.date)} · {record.status}
+                        </p>
+                      </div>
+                      <p className="shrink-0 text-sm font-semibold">{formatMoney(record.amount)}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </div>

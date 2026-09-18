@@ -1,53 +1,24 @@
 import { NextResponse } from "next/server"
-import { db } from "@/lib/firebase/config"
-import { collection, doc, getDocs, query, updateDoc, where } from "firebase/firestore"
+import { verifyAndSettle } from "@/lib/payments/settle"
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const transactionId = searchParams.get("transactionId")
+    const transactionId = searchParams.get("transactionId") || searchParams.get("tx_ref") || searchParams.get("txRef")
 
     if (!transactionId) {
       return NextResponse.json({ success: false, error: "Transaction ID is required" }, { status: 400 })
     }
 
-    const payChanguResponse = await fetch(`https://api.paychangu.com/verify-payment/${transactionId}`, {
-      headers: {
-        Authorization: `Bearer ${process.env.PAYCHANGU_SECRET_KEY}`,
-      },
-    })
-
-    const data = await payChanguResponse.json()
-    const success = data.status === "success"
-
-    if (success) {
-      const paidAt = new Date().toISOString()
-      const feesQuery = query(collection(db, "membershipFees"), where("txRef", "==", transactionId))
-      const feesSnapshot = await getDocs(feesQuery)
-      await Promise.all(
-        feesSnapshot.docs.map(async (feeDoc) => {
-          await updateDoc(feeDoc.ref, {
-            status: "paid",
-            paymentDate: paidAt,
-          })
-          const fee = feeDoc.data()
-          if (fee.period === "joining" && fee.userId) {
-            await updateDoc(doc(db, "users", fee.userId), {
-              joiningFeePaid: true,
-              joiningFeePaidAt: paidAt,
-              updatedAt: paidAt,
-            })
-          }
-        }),
-      )
-    }
+    const result = await verifyAndSettle(transactionId)
 
     return NextResponse.json({
-      success,
-      status: data.status,
-      amount: data.amount,
+      success: result.success,
+      status: result.success ? "success" : result.data?.status || "failed",
+      amount: result.data?.data?.amount ?? result.data?.amount ?? result.receipt?.amount,
+      receipt: result.receipt,
     })
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         success: false,

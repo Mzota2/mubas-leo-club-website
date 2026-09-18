@@ -16,7 +16,7 @@ export default function PortalTrainingPage() {
   const { user } = useAuth()
   const { data: modules = [] } = useTrainingModules()
   const { data: savedProgress } = useTrainingProgress(user?.id)
-  const { data: fees = [] } = useMembershipFees(user?.id)
+  const { data: fees = [] } = useMembershipFees(user?.id, true)
   const joiningPaid = user ? hasPaidJoiningFee(fees, user.id, user) : false
   const progress = savedProgress ?? (user ? emptyProgress(user.id) : null)
   const curriculum = publishedModules(modules)

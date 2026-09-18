@@ -39,7 +39,7 @@ export function AdminStatCard({
           {loading ? (
             <Skeleton className="mt-2 h-8 w-24" />
           ) : (
-            <p className="mt-1 truncate text-2xl font-semibold tracking-tight text-neutral-900">{value}</p>
+            <p className="mt-1 break-words text-xl font-semibold tracking-tight text-neutral-900 sm:text-2xl">{value}</p>
           )}
           {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
         </div>

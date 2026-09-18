@@ -4,11 +4,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { getMembershipFees, createMembershipFee, updateMembershipFee } from "@/lib/firebase/firestore"
 import type { MembershipFee } from "@/lib/types"
 
-export function useMembershipFees(userId?: string) {
+export function useMembershipFees(userId?: string, requiredUser = false) {
   return useQuery({
     queryKey: ["membershipFees", userId],
     queryFn: () => getMembershipFees(userId),
-    enabled: !!userId || userId === undefined,
+    enabled: requiredUser ? Boolean(userId) : true,
   })
 }
 

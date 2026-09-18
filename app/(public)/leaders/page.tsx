@@ -36,11 +36,11 @@ export default function LeadersPage() {
   ]
 
   return (
-    <div className="py-16">
+    <div className="py-10 md:py-16">
       <div className="container px-4 max-w-7xl mx-auto">
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Our Leaders</h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <h1 className="text-3xl md:text-5xl font-bold mb-4">Our Leaders</h1>
+          <p className="text-base md:text-xl text-gray-600 max-w-3xl mx-auto">
             Meet the dedicated individuals guiding MUBAS Leo Club towards excellence
           </p>
         </div>
@@ -56,9 +56,9 @@ export default function LeadersPage() {
                 </div>
                 <p className="text-gray-600 text-sm text-center mb-4 leading-relaxed">{leader.bio}</p>
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Mail className="h-4 w-4" />
-                    <a href={`mailto:${leader.email}`} className="hover:text-leo-primary transition-colors">
+                  <div className="flex min-w-0 items-center gap-2 text-gray-600">
+                    <Mail className="h-4 w-4 shrink-0" />
+                    <a href={`mailto:${leader.email}`} className="min-w-0 break-all hover:text-leo-primary transition-colors">
                       {leader.email}
                     </a>
                   </div>

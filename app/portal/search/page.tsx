@@ -64,7 +64,7 @@ function BrowseView() {
             View all
           </Link>
         </div>
-        <div className="flex gap-3 overflow-x-auto pb-1">
+        <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
           {featuredSearchEvents.map((event) => (
             <Link
               key={event.id}

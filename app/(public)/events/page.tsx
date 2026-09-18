@@ -39,11 +39,11 @@ export default function EventsPage() {
   ]
 
   return (
-    <div className="py-16">
+    <div className="py-10 md:py-16">
       <div className="container px-4 max-w-7xl mx-auto">
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Our Events</h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <h1 className="text-3xl md:text-5xl font-bold mb-4">Our Events</h1>
+          <p className="text-base md:text-xl text-gray-600 max-w-3xl mx-auto">
             Join us in our various community service activities and make a lasting impact
           </p>
         </div>
@@ -65,7 +65,7 @@ export default function EventsPage() {
                     <div className="flex items-start justify-between mb-4">
                       <Badge className="bg-leo-primary text-white">{event.category}</Badge>
                     </div>
-                    <h3 className="text-2xl font-bold mb-3">{event.title}</h3>
+                    <h3 className="text-xl md:text-2xl font-bold mb-3">{event.title}</h3>
                     <p className="text-gray-600 mb-4">{event.description}</p>
                     <div className="space-y-2 text-sm text-gray-600">
                       <div className="flex items-center gap-2">
@@ -74,9 +74,9 @@ export default function EventsPage() {
                           {event.date} at {event.time}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        <span>{event.location}</span>
+                      <div className="flex items-start gap-2">
+                        <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+                        <span className="min-w-0 break-words">{event.location}</span>
                       </div>
                     </div>
                   </CardContent>

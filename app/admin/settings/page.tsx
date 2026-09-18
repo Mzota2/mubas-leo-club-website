@@ -129,21 +129,21 @@ export default function AdminSettingsPage() {
             <CardDescription>Control which automated messages the platform sends.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between rounded-md border border-border/60 p-4">
+            <div className="flex items-start justify-between gap-3 rounded-md border border-border/60 p-4">
               <div>
                 <Label>Event reminders</Label>
                 <p className="text-sm text-muted-foreground">Send reminders for upcoming events</p>
               </div>
               <Switch checked={eventReminders} onCheckedChange={setEventReminders} disabled={isLoading} />
             </div>
-            <div className="flex items-center justify-between rounded-md border border-border/60 p-4">
+            <div className="flex items-start justify-between gap-3 rounded-md border border-border/60 p-4">
               <div>
                 <Label>Birthday notifications</Label>
                 <p className="text-sm text-muted-foreground">Notify members of birthdays</p>
               </div>
               <Switch checked={birthdayNotifications} onCheckedChange={setBirthdayNotifications} disabled={isLoading} />
             </div>
-            <div className="flex items-center justify-between rounded-md border border-border/60 p-4">
+            <div className="flex items-start justify-between gap-3 rounded-md border border-border/60 p-4">
               <div>
                 <Label>Payment notifications</Label>
                 <p className="text-sm text-muted-foreground">Send payment confirmation emails</p>

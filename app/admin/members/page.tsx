@@ -246,7 +246,7 @@ export default function MembersPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
         <AdminStatCard title="Total members" value={users?.length || 0} icon={Users} accent="blue" loading={isLoading} />
         <AdminStatCard title="Leo members" value={leos.length} icon={UserCheck} accent="green" loading={isLoading} />
         <AdminStatCard
@@ -367,7 +367,7 @@ export default function MembersPage() {
                       </TableCell>
                       <TableCell>{formatDate(member.joinedDate ?? member.createdAt)}</TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <Button variant="ghost" size="sm" onClick={() => openEdit(member)}>
                             Edit
                           </Button>

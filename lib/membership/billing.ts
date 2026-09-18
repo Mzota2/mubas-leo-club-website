@@ -75,7 +75,7 @@ export function collectedInRange(fees: MembershipFee[], rangeStart: Date, rangeE
 export function periodLabel(period: FeePeriod) {
   if (period === "monthly") return "Monthly"
   if (period === "semester") return "Semester"
-  if (period === "joining") return "Joining"
+  if (period === "joining") return "Joining fee"
   return "Yearly"
 }
 

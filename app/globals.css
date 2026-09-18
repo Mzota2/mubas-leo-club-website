@@ -130,6 +130,10 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    overflow-x: clip;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
@@ -137,6 +141,8 @@
     font-size: 15px;
     line-height: 1.6;
     text-rendering: optimizeLegibility;
+    overflow-x: clip;
+    max-width: 100%;
   }
 
   h1,
@@ -307,6 +313,15 @@ html {
 img {
   max-width: 100%;
   height: auto;
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
 
 /* Focus styles for accessibility */

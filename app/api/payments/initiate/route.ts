@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
-import { createDonation, createMembershipFee } from "@/lib/firebase/firestore"
+import { createDonation, createMembershipFee, createOrder } from "@/lib/firebase/firestore"
+import { PAYCHANGU_CONFIG } from "@/lib/paychangu/config"
 
 function getFiscalYear(date = new Date()) {
   const year = date.getFullYear()
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "NEXT_PUBLIC_APP_URL is not configured" }, { status: 500 })
     }
 
-    const paychanguKey = process.env.PAYCHANGU_SECRET_KEY
+    const paychanguKey = process.env.PAYCHANGU_SECRET_KEY || PAYCHANGU_CONFIG.secretKey
     if (!paychanguKey) {
       return NextResponse.json({ success: false, error: "PAYCHANGU_SECRET_KEY is not configured" }, { status: 500 })
     }
@@ -26,13 +27,13 @@ export async function POST(request: Request) {
     if (body.purpose === "donation") {
       const donorName = `${body.firstName ?? "Donor"}${body.lastName ? ` ${body.lastName}` : ""}`.trim()
       await createDonation({
-        userId: body.userId,
+        ...(body.userId ? { userId: body.userId } : {}),
         amount: Number(body.amount),
         donorName,
         donorEmail: body.email,
-        message: body.message,
-        causeId: body.causeId,
-        causeTitle: body.causeTitle,
+        ...(body.message ? { message: body.message } : {}),
+        ...(body.causeId ? { causeId: body.causeId } : {}),
+        ...(body.causeTitle ? { causeTitle: body.causeTitle } : {}),
         txRef,
         currency: body.currency || "MWK",
         paymentStatus: "pending",
@@ -59,17 +60,46 @@ export async function POST(request: Request) {
       })
     }
 
-    const returnUrl =
+    if (body.purpose === "order") {
+      if (!body.userId) {
+        return NextResponse.json({ success: false, error: "A signed-in member is required" }, { status: 400 })
+      }
+      const now = new Date().toISOString()
+      await createOrder({
+        userId: body.userId,
+        items: Array.isArray(body.items) ? body.items : [],
+        subtotal: Number(body.subtotal) || Number(body.amount),
+        deliveryFee: Number(body.deliveryFee) || 0,
+        total: Number(body.amount),
+        currency: body.currency || "MWK",
+        status: "pending",
+        paymentMethod: "paychangu",
+        paymentStatus: "pending",
+        txRef,
+        customerName: body.customerName || `${body.firstName ?? ""} ${body.lastName ?? ""}`.trim(),
+        customerEmail: body.email,
+        phone: body.phone,
+        shippingAddress: body.shippingAddress || "",
+        createdAt: now,
+        updatedAt: now,
+      })
+    }
+
+    const returnUrlBase =
       body.returnUrl ||
       (body.purpose === "donation"
-        ? `${appUrl}/donate/return?txRef=${txRef}`
+        ? `${appUrl}/donate/return`
         : body.purpose === "membership"
-          ? `${appUrl}/portal/membership/return?txRef=${txRef}`
+          ? `${appUrl}/portal/membership/return`
           : body.purpose === "joining"
-            ? `${appUrl}/portal/join-fee/return?txRef=${txRef}`
-          : `${appUrl}/portal/shop/orders`)
+            ? `${appUrl}/portal/join-fee/return`
+            : body.purpose === "order"
+              ? `${appUrl}/portal/shop/checkout/return`
+              : `${appUrl}/portal/payments`)
+    const separator = returnUrlBase.includes("?") ? "&" : "?"
+    const returnUrl = `${returnUrlBase}${separator}txRef=${encodeURIComponent(txRef)}`
 
-    const payChanguResponse = await fetch("https://api.paychangu.com/payment", {
+    const payChanguResponse = await fetch(PAYCHANGU_CONFIG.paymentUrl, {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -77,8 +107,8 @@ export async function POST(request: Request) {
         Authorization: `Bearer ${paychanguKey}`,
       },
       body: JSON.stringify({
-        amount: body.amount,
-        currency: body.currency || "MWK",
+        amount: Number(body.amount),
+        currency: body.currency || PAYCHANGU_CONFIG.currency,
         email: body.email,
         first_name: body.firstName,
         last_name: body.lastName,
@@ -107,10 +137,12 @@ export async function POST(request: Request) {
       transactionId: txRef,
     })
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to initiate payment"
+    console.error("PayChangu initiate failed", error)
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to initiate payment",
+        error: message,
       },
       { status: 500 },
     )

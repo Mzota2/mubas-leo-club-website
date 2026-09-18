@@ -9,12 +9,16 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { useMembershipFees } from "@/lib/hooks/use-membership-fees"
 import { usePlatformSettings } from "@/lib/hooks/use-settings"
+import { PaymentsTable } from "@/components/payments/payments-table"
 import { initiatePayment } from "@/lib/paychangu/client"
 import { useToast } from "@/hooks/use-toast"
 import { amountForPeriod, billingFromSettings, coverageFor, memberPaidInRange, periodLabel, toIsoDate } from "@/lib/membership/billing"
 import type { FeePeriod } from "@/lib/types"
 import { formatDate, formatMoney } from "@/lib/utils/format"
 import { portalCanvasMuted, portalCanvasTitle } from "@/components/portal/styles"
+import { SAMPLE_PAYMENTS } from "@/lib/payments/defaults"
+import { feeToRecord } from "@/lib/payments/receipt"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 const periods: FeePeriod[] = ["monthly", "semester", "yearly"]
 
@@ -22,9 +26,13 @@ export default function MembershipPage() {
   const { user } = useAuth()
   const { toast } = useToast()
   const { data: settings } = usePlatformSettings()
-  const { data: fees = [] } = useMembershipFees(user?.id)
+  const { data: fees = [], isLoading: feesLoading } = useMembershipFees(user?.id, true)
   const billing = billingFromSettings(settings)
   const [paying, setPaying] = useState<FeePeriod | null>(null)
+  const usingSampleHistory = !feesLoading && fees.length === 0
+  const history = usingSampleHistory
+    ? SAMPLE_PAYMENTS.filter((record) => record.kind !== "donation")
+    : fees.map((fee) => feeToRecord(fee, user))
 
   const now = new Date()
   const paidByPeriod = useMemo(() => {
@@ -119,7 +127,7 @@ export default function MembershipPage() {
             </Badge>
             <Award className="h-8 w-8" />
           </div>
-          <h2 className="mb-1 text-2xl font-bold">
+          <h2 className="mb-1 break-words text-2xl font-bold">
             {user?.firstName} {user?.lastName}
           </h2>
           <p className="mb-4 opacity-90">ID: {user?.leoId}</p>
@@ -168,27 +176,20 @@ export default function MembershipPage() {
 
       <Card className="border-none bg-white shadow-sm">
         <CardContent className="p-6">
-          <h3 className="font-semibold">Payment history</h3>
-          {fees.length === 0 ? (
-            <p className="mt-2 text-sm text-neutral-600">No payments yet.</p>
-          ) : (
-            <ul className="mt-3 space-y-2">
-              {fees.map((fee) => (
-                <li key={fee.id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
-                  <div>
-                    <p className="font-medium">
-                      {periodLabel(fee.period)} · {formatMoney(fee.amount)}
-                    </p>
-                    <p className="text-xs text-neutral-500">
-                      {fee.method === "offline" ? "Recorded by admin" : "Online"}
-                      {fee.paymentDate ? ` · ${formatDate(fee.paymentDate)}` : ""}
-                    </p>
-                  </div>
-                  <Badge variant={fee.status === "paid" ? "default" : "secondary"}>{fee.status}</Badge>
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="font-semibold">Payment history</h3>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/portal/payments">All payments</Link>
+            </Button>
+          </div>
+          {usingSampleHistory ? (
+            <Alert className="mb-3">
+              <AlertDescription>
+                Example membership and joining receipts until your first PayChangu payment is recorded.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          <PaymentsTable records={history} />
         </CardContent>
       </Card>
     </div>

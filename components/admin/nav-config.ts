@@ -88,6 +88,12 @@ export const adminNavGroups: AdminNavGroup[] = [
     label: "Finance",
     items: [
       {
+        href: "/admin/payments",
+        icon: CreditCard,
+        label: "Payments",
+        description: "Donations, membership, and joining fees",
+      },
+      {
         href: "/admin/fees",
         icon: CreditCard,
         label: "Membership fees",
