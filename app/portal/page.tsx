@@ -1,123 +1,263 @@
+"use client"
+
 import Link from "next/link"
+import { useMemo } from "react"
+import {
+  Award,
+  Calendar,
+  Heart,
+  Search,
+  Sparkles,
+  TrendingUp,
+  Users,
+  CreditCard,
+  ArrowRight,
+  Shield,
+} from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, Users, Heart, CreditCard, TrendingUp } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { useAuth } from "@/lib/hooks/use-auth"
+import { useEvents } from "@/lib/hooks/use-events"
+import { PromoCarousel } from "@/components/shop/promo-carousel"
+import { canAccessAdmin } from "@/components/portal/nav-config"
+import { promoSlides } from "@/lib/media"
+import { formatDate, greetingForHour } from "@/lib/utils/format"
 
 export default function PortalDashboard() {
-  const upcomingEvents = [
-    {
-      id: 1,
-      title: "Blood Donation Drive",
-      image: "/event-blood-donation.jpg",
-      date: "July 15",
-    },
-    {
-      id: 2,
-      title: "Clean MUBAS Initiative",
-      image: "/event-cleanup.jpg",
-      date: "July 22",
-    },
-    {
-      id: 3,
-      title: "Visiting People with Disabilities",
-      image: "/event-visit-pwd.jpg",
-      date: "July 29",
-    },
-  ]
+  const { user } = useAuth()
+  const { data: events } = useEvents()
+  const now = new Date()
+  const isProspectiveLeo = user?.membershipType === "prospective-leo"
+  const isLeo = user?.membershipType === "leo"
+  const showAdmin = canAccessAdmin(user?.role)
+
+  const upcomingEvents = useMemo(() => {
+    return [...(events ?? [])]
+      .filter((event) => event.status === "upcoming")
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, 3)
+  }, [events])
+
+  const dateLabel = now.toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  })
 
   const categories = [
-    { title: "Health Causes", icon: Heart, color: "bg-red-500", href: "/portal/events?category=health" },
-    { title: "Environment Causes", icon: Users, color: "bg-green-500", href: "/portal/events?category=environment" },
-    {
-      title: "General Community Service",
-      icon: Users,
-      color: "bg-purple-500",
-      href: "/portal/events?category=community",
-    },
-    { title: "General Meeting", icon: Users, color: "bg-amber-500", href: "/portal/events?category=meeting" },
+    { title: "Health", icon: Heart, color: "bg-red-500", href: "/portal/events?category=health" },
+    { title: "Environment", icon: Users, color: "bg-emerald-500", href: "/portal/events?category=environment" },
+    { title: "Community", icon: Users, color: "bg-violet-500", href: "/portal/events?category=community" },
+    { title: "Meetings", icon: Calendar, color: "bg-amber-500", href: "/portal/events?category=meeting" },
     { title: "Fundraising", icon: CreditCard, color: "bg-cyan-500", href: "/portal/events?category=fundraising" },
-    { title: "Social Activities", icon: Users, color: "bg-amber-400", href: "/portal/events?category=social" },
+    { title: "Social", icon: Sparkles, color: "bg-orange-400", href: "/portal/events?category=social" },
   ]
 
   return (
-    <div className="space-y-6 px-4 py-6">
-      {/* Search Bar */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+    <div className="space-y-6 px-4 py-6 lg:px-6 lg:py-8">
+      <section className="overflow-hidden rounded-md bg-gradient-to-br from-[#F59E0B] via-[#F59E0B] to-[#DC2626] p-5 text-white shadow-sm lg:p-8">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-sm text-white/80">{dateLabel}</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight lg:text-3xl">
+              {greetingForHour(now)}, {user?.firstName || "Leo"}
+            </h1>
+            <p className="mt-2 max-w-xl text-sm text-white/90">
+              {isProspectiveLeo
+                ? "Complete training and membership payment to become a full Leo member."
+                : isLeo
+                  ? "See what’s happening in the club and jump into the next activity."
+                  : "Welcome to MUBAS Leo Club. Start your journey of leadership and service."}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {user?.leoId ? (
+                <Badge variant="secondary" className="border-white/20 bg-white/15 text-white">
+                  <Award className="h-3 w-3" />
+                  {user.leoId}
+                </Badge>
+              ) : null}
+              {isProspectiveLeo ? (
+                <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+                  Prospective Leo
+                </Badge>
+              ) : null}
+              {isLeo ? (
+                <Badge variant="secondary" className="bg-white text-emerald-700">
+                  <Sparkles className="h-3 w-3" />
+                  Active Leo
+                </Badge>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {showAdmin ? (
+              <Button asChild className="bg-white text-neutral-900 hover:bg-white/90">
+                <Link href="/admin">
+                  <Shield className="h-4 w-4" />
+                  Open admin
+                </Link>
+              </Button>
+            ) : null}
+            {user?.whatsappGroupLink && isLeo ? (
+              <Button asChild className="border-white/30 bg-white/15 text-white hover:bg-white/25">
+                <a href={user.whatsappGroupLink} target="_blank" rel="noopener noreferrer">
+                  WhatsApp group
+                </a>
+              </Button>
+            ) : (
+              <Button asChild className="border-white/30 bg-white/15 text-white hover:bg-white/25">
+                <Link href="/portal/events">View events</Link>
+              </Button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <form action="/portal/search" className="relative">
+        <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="What do you want to know ?"
-          className="pl-10 bg-white/90 backdrop-blur-sm border-none rounded-xl h-12"
+          name="q"
+          placeholder="Search events, members, or club info"
+          className="h-12 rounded-md border-none bg-white pl-10 shadow-sm"
         />
+      </form>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <PromoCarousel slides={promoSlides} />
+
+          <Card className="rounded-md border-none bg-white shadow-sm">
+            <CardContent>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-600">Quick links</h2>
+              </div>
+              <div className="grid grid-cols-3 gap-3 lg:grid-cols-6">
+                {[
+                  { href: "/portal/training", label: "Training", icon: Award, tone: "from-[#F59E0B] to-[#DC2626]" },
+                  { href: "/portal/membership", label: "Membership", icon: Users, tone: "from-[#92400E] to-[#B45309]" },
+                  { href: "/donate", label: "Donate", icon: Heart, tone: "from-[#F59E0B] to-[#DC2626]" },
+                  { href: "/portal/club", label: "My club", icon: Users, tone: "from-[#DC2626] to-[#991B1B]" },
+                  { href: "/portal/events", label: "Events", icon: Calendar, tone: "from-[#D97706] to-[#B45309]" },
+                  { href: "/portal/shop", label: "Shop", icon: CreditCard, tone: "from-[#F59E0B] to-[#B45309]" },
+                ].map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex aspect-square flex-col items-center justify-center rounded-md bg-gradient-to-br ${item.tone} p-3 text-center text-white transition-transform hover:scale-[1.02]`}
+                  >
+                    <item.icon className="mb-2 h-6 w-6" />
+                    <span className="text-[11px] font-medium leading-tight lg:text-xs">{item.label}</span>
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card className="rounded-md border-none bg-gradient-to-br from-[#DC2626] to-[#991B1B] text-white shadow-sm">
+            <CardContent>
+              <p className="text-sm text-white/80">{now.toLocaleDateString("en-GB", { weekday: "long" })}</p>
+              <p className="mt-1 text-5xl font-bold">{now.getDate()}</p>
+              <p className="mt-1 text-sm uppercase tracking-wide text-white/80">
+                {now.toLocaleDateString("en-GB", { month: "long" })}
+              </p>
+              <Button asChild className="mt-4 w-full rounded-md bg-[#F59E0B] text-white hover:bg-[#D97706]">
+                <Link href="/portal/calendar">Open calendar</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-md border-none bg-white shadow-sm">
+            <CardContent>
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="font-semibold">Upcoming events</h2>
+                <Link href="/portal/events" className="text-sm font-medium text-leo-primary">
+                  View all
+                </Link>
+              </div>
+              {upcomingEvents.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No upcoming events yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {upcomingEvents.map((event) => (
+                    <Link
+                      key={event.id}
+                      href="/portal/events"
+                      className="block rounded-md border border-border/60 p-3 transition-colors hover:bg-amber-50"
+                    >
+                      <p className="truncate font-medium">{event.title}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {formatDate(event.date)}
+                        {event.time ? ` · ${event.time}` : ""}
+                      </p>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      {/* Event Banner Carousel */}
-      <div className="relative">
-        <div className="aspect-video rounded-2xl overflow-hidden bg-white">
-          <img src="/images/home-20-20screen.jpg" alt="Blood Donation Drive" className="w-full h-full object-cover" />
-        </div>
-        <div className="flex justify-center gap-2 mt-3">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <div key={i} className={`h-2 rounded-full ${i === 0 ? "w-8 bg-white" : "w-2 bg-white/50"}`} />
-          ))}
-        </div>
+      {isProspectiveLeo ? (
+        <Card className="rounded-md border-amber-200 bg-amber-50 shadow-sm">
+          <CardContent>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <div className="rounded-md bg-amber-100 p-3 text-amber-700">
+                <Sparkles className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold">
+                  {user?.membershipStatus === "pending" ? "Complete training while we approve you" : "Become a full Leo member"}
+                </h3>
+                <p className="mt-1 text-sm text-neutral-700">
+                  {user?.membershipStatus === "pending"
+                    ? "An admin still needs to approve your joining request. Meanwhile, go through the new member training program — it is the only training required."
+                    : "Complete the new member training program (50% or higher on each quiz) and pay membership fees to become a full Leo."}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button asChild size="sm" variant="outline" className="border-amber-300 text-amber-800">
+                    <Link href="/portal/training">Start training</Link>
+                  </Button>
+                  <Button asChild size="sm" className="bg-amber-600 text-white hover:bg-amber-700">
+                    <Link href="/portal/membership">Pay membership</Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {categories.map((category) => (
+          <Link
+            key={category.title}
+            href={category.href}
+            className="flex items-center justify-between rounded-md bg-white px-4 py-3 shadow-sm transition-colors hover:bg-amber-50"
+          >
+            <span className="flex items-center gap-3 text-sm font-medium">
+              <span className={`rounded-md p-2 text-white ${category.color}`}>
+                <category.icon className="h-4 w-4" />
+              </span>
+              {category.title}
+            </span>
+            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+          </Link>
+        ))}
       </div>
 
-      {/* Quick Links */}
-      <Card className="bg-white/90 backdrop-blur-sm border-none shadow-lg">
-        <CardContent className="p-4">
-          <h2 className="text-sm font-semibold mb-3 text-gray-700">QUICK LINKS</h2>
-          <div className="grid grid-cols-3 gap-3">
-            <Link href="/portal/membership">
-              <div className="bg-gradient-to-br from-[#92400E] to-[#B45309] rounded-xl p-4 flex flex-col items-center justify-center aspect-square text-white">
-                <Users className="h-8 w-8 mb-2" />
-                <span className="text-xs font-medium text-center">MY MEMBERSHIP</span>
-              </div>
-            </Link>
-            <Link href="/donate">
-              <div className="bg-gradient-to-br from-[#F59E0B] to-[#DC2626] rounded-xl p-4 flex flex-col items-center justify-center aspect-square text-white">
-                <Heart className="h-8 w-8 mb-2" />
-                <span className="text-xs font-medium text-center">Donate</span>
-              </div>
-            </Link>
-            <Link href="/portal/club">
-              <div className="bg-gradient-to-br from-[#DC2626] to-[#991B1B] rounded-xl p-4 flex flex-col items-center justify-center aspect-square text-white">
-                <Users className="h-8 w-8 mb-2" />
-                <span className="text-xs font-medium text-center">MY CLUB</span>
-              </div>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Date Display */}
-      <Card className="bg-gradient-to-br from-[#DC2626] to-[#991B1B] text-white border-none shadow-lg">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm opacity-90">Wednesday</p>
-              <p className="text-5xl font-bold">15.18</p>
-              <p className="text-sm opacity-90 mt-1">JULY</p>
-            </div>
-            <div className="flex gap-2">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className={`h-2 w-2 rounded-full ${i === 0 ? "bg-white" : "bg-white/50"}`} />
-              ))}
-            </div>
-          </div>
-          <Button className="w-full mt-4 bg-[#F59E0B] hover:bg-[#D97706] text-white border-none">Activity List</Button>
-        </CardContent>
-      </Card>
-
-      {/* Club & Personal Insights */}
-      <Link href="/portal/insights">
-        <Card className="bg-white/90 backdrop-blur-sm border-none shadow-lg hover:shadow-xl transition-shadow">
-          <CardContent className="p-4 flex items-center justify-between">
+      <Link href="/portal/calendar" className="block">
+        <Card className="rounded-md border-none bg-white shadow-sm transition-shadow hover:shadow-md">
+          <CardContent className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <TrendingUp className="h-10 w-10 text-[#DC2626]" />
-              <span className="font-semibold text-gray-800">Club & Personal Insights</span>
+              <TrendingUp className="h-8 w-8 text-[#DC2626]" />
+              <span className="font-semibold">Club calendar & activity</span>
             </div>
-            <div className="text-[#F59E0B]">→</div>
+            <ArrowRight className="h-4 w-4 text-leo-primary" />
           </CardContent>
         </Card>
       </Link>

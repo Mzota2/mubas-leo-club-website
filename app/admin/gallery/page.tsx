@@ -22,7 +22,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { useCreateGalleryImage, useDeleteGalleryImage, useGalleryImages, useUpdateGalleryImage } from "@/lib/hooks/use-gallery"
 import type { GalleryImage } from "@/lib/types"
-import { Plus, Pencil, Trash2, Upload } from "lucide-react"
+import { Plus, Pencil, Trash2, Upload, Image as ImageIcon } from "lucide-react"
+import { AdminPageHeader } from "@/components/admin/page-header"
+import { AdminEmptyState } from "@/components/admin/empty-state"
 
 export default function AdminGalleryPage() {
   const { firebaseUser } = useAuth()
@@ -122,20 +124,20 @@ export default function AdminGalleryPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Gallery Management</h1>
-          <p className="text-gray-600">Manage public gallery images</p>
-        </div>
-        <Button className="bg-leo-primary hover:bg-leo-primary-dark text-white" onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Image
-        </Button>
-      </div>
+      <AdminPageHeader
+        title="Gallery"
+        description="Upload and manage photos shown on the public gallery."
+        actions={
+          <Button className="bg-leo-primary text-white hover:bg-leo-primary-dark" onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            Add image
+          </Button>
+        }
+      />
 
-      <Card>
+      <Card className="rounded-md border-border/60 shadow-sm">
         <CardHeader>
-          <CardTitle>All Images</CardTitle>
+          <CardTitle className="text-lg font-semibold">All images</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -145,11 +147,11 @@ export default function AdminGalleryPage() {
               <Skeleton className="h-[260px] w-full" />
             </div>
           ) : (images ?? []).length === 0 ? (
-            <p className="text-sm text-gray-600">No gallery images yet.</p>
+            <AdminEmptyState icon={ImageIcon} title="No gallery images yet" description="Add photos from club events and community service." />
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {(images ?? []).map((img) => (
-                <Card key={img.id} className="overflow-hidden">
+                <Card key={img.id} className="overflow-hidden rounded-md">
                   <div className="relative aspect-video bg-gray-100">
                     <Image src={img.url} alt={img.title} fill className="object-cover" />
                   </div>

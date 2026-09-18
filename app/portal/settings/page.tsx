@@ -1,21 +1,16 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { Card, CardContent } from "@/components/ui/card"
-import { ChevronRight, SettingsIcon, Lock, Bell, Info, LogOut } from "lucide-react"
+import { Bell, ChevronLeft, ChevronRight, Info, LogOut, SettingsIcon, Shield } from "lucide-react"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { signOut } from "firebase/auth"
-import { auth } from "@/lib/firebase/config"
+import { canAccessAdmin } from "@/components/portal/nav-config"
+import { signOut } from "@/lib/auth/firebase-auth"
+import { portalCanvasTitle } from "@/components/portal/styles"
 
 export default function SettingsPage() {
   const { user } = useAuth()
   const router = useRouter()
-
-  const handleLogout = async () => {
-    await signOut(auth)
-    router.push("/")
-  }
 
   const settingsItems = [
     {
@@ -25,7 +20,7 @@ export default function SettingsPage() {
       href: "/portal/settings/general",
     },
     {
-      icon: Lock,
+      icon: Info,
       title: "Privacy & Security",
       description: "Account and password settings",
       href: "/portal/settings/privacy",
@@ -45,69 +40,81 @@ export default function SettingsPage() {
   ]
 
   return (
-    <div className="px-4 py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-2 text-white">
-        <button onClick={() => router.back()}>
-          <ChevronRight className="h-6 w-6 rotate-180" />
+    <div className="space-y-5 px-4 py-5 lg:px-6 lg:py-8">
+      <div className={`flex items-center gap-1 ${portalCanvasTitle}`}>
+        <button type="button" onClick={() => router.back()} className="rounded-md p-1 lg:hidden" aria-label="Back">
+          <ChevronLeft className="h-6 w-6" />
         </button>
         <h1 className="text-xl font-semibold">Settings</h1>
       </div>
 
-      {/* Profile Card */}
-      <Card className="bg-white/90 backdrop-blur-sm border-none shadow-lg">
-        <CardContent className="p-4 flex items-center gap-4">
-          <Avatar className="h-16 w-16">
-            <AvatarImage src={user?.profileImage || "/placeholder.svg"} />
-            <AvatarFallback className="bg-gradient-to-br from-[#F59E0B] to-[#DC2626] text-white text-xl font-bold">
-              {user?.firstName?.[0]}
-              {user?.lastName?.[0]}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="font-semibold">ID {user?.leoId || "Leo-124537"}</p>
-            <p className="text-sm text-gray-600">@{user?.username || "Leo Mzota"}</p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-center gap-3">
+        <Avatar className="h-16 w-16 border-2 border-white/80">
+          <AvatarImage src={user?.profileImage || "/placeholder.svg"} />
+          <AvatarFallback className="bg-white text-xl font-bold text-leo-primary">
+            {user?.firstName?.[0]}
+            {user?.lastName?.[0]}
+          </AvatarFallback>
+        </Avatar>
+        <div className="text-white lg:text-neutral-900">
+          <p className="font-semibold">ID {user?.leoId || "Leo-124537"}</p>
+          <p className="text-sm text-white/85 lg:text-muted-foreground">@{user?.username || "Leo Mzota"}</p>
+        </div>
+      </div>
 
-      {/* Settings Items */}
       <div className="space-y-3">
         {settingsItems.map((item) => (
-          <Card
+          <button
             key={item.title}
-            className="bg-white/90 backdrop-blur-sm border-none shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
+            type="button"
             onClick={() => router.push(item.href)}
+            className="flex w-full items-center gap-3 rounded-md bg-white p-3 text-left shadow-sm"
           >
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="p-3 bg-[#DC2626]/10 rounded-full">
-                <item.icon className="h-6 w-6 text-[#DC2626]" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold">{item.title}</h3>
-                <p className="text-sm text-gray-600">{item.description}</p>
-              </div>
-              <ChevronRight className="h-5 w-5 text-gray-400" />
-            </CardContent>
-          </Card>
+            <div className="rounded-md bg-[#DC2626]/10 p-2.5">
+              <item.icon className="h-5 w-5 text-[#7F1D1D]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-neutral-900">{item.title}</h3>
+              <p className="text-sm text-neutral-500">{item.description}</p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-[#7F1D1D]" />
+          </button>
         ))}
 
-        {/* Logout */}
-        <Card
-          className="bg-[#F59E0B]/90 backdrop-blur-sm border-none shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
-          onClick={handleLogout}
+        {canAccessAdmin(user?.role) ? (
+          <button
+            type="button"
+            onClick={() => router.push("/admin")}
+            className="flex w-full items-center gap-3 rounded-md bg-white p-3 text-left shadow-sm"
+          >
+            <div className="rounded-md bg-amber-50 p-2.5">
+              <Shield className="h-5 w-5 text-leo-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-neutral-900">Admin console</h3>
+              <p className="text-sm text-neutral-500">Manage members, events, and donations</p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-[#7F1D1D]" />
+          </button>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={async () => {
+            await signOut()
+            router.push("/")
+          }}
+          className="flex w-full items-center gap-3 rounded-md bg-[#F59E0B] p-3 text-left"
         >
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="p-3 bg-white/20 rounded-full">
-              <LogOut className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-white">Log out</h3>
-              <p className="text-sm text-white/80">Log out from app</p>
-            </div>
-            <ChevronRight className="h-5 w-5 text-white" />
-          </CardContent>
-        </Card>
+          <div className="rounded-md bg-white/20 p-2.5">
+            <LogOut className="h-5 w-5 text-white" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold text-white">Log out</h3>
+            <p className="text-sm text-white/80">Log out from app</p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-[#7F1D1D]" />
+        </button>
       </div>
     </div>
   )

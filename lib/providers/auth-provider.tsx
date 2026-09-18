@@ -4,7 +4,7 @@ import type React from "react"
 
 import { createContext, useContext, useEffect, useState } from "react"
 import { type User as FirebaseUser, onAuthStateChanged } from "firebase/auth"
-import { doc, getDoc } from "firebase/firestore"
+import { doc, onSnapshot } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase/config"
 import type { User } from "@/lib/types"
 
@@ -26,23 +26,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setFirebaseUser(firebaseUser)
+    let profileUnsub: (() => void) | null = null
 
-      if (firebaseUser) {
-        // Fetch user data from Firestore
-        const userDoc = await getDoc(doc(db, "users", firebaseUser.uid))
-        if (userDoc.exists()) {
-          setUser({ id: userDoc.id, ...userDoc.data() } as User)
-        }
-      } else {
-        setUser(null)
+    const unsubscribe = onAuthStateChanged(auth, (nextFirebaseUser) => {
+      setFirebaseUser(nextFirebaseUser)
+
+      if (profileUnsub) {
+        profileUnsub()
+        profileUnsub = null
       }
 
-      setLoading(false)
+      if (!nextFirebaseUser) {
+        setUser(null)
+        setLoading(false)
+        return
+      }
+
+      setLoading(true)
+      const ref = doc(db, "users", nextFirebaseUser.uid)
+      profileUnsub = onSnapshot(
+        ref,
+        (snap) => {
+          if (snap.exists()) {
+            setUser({ id: snap.id, ...snap.data() } as User)
+          } else {
+            setUser(null)
+          }
+          setLoading(false)
+        },
+        () => {
+          setUser(null)
+          setLoading(false)
+        },
+      )
     })
 
-    return unsubscribe
+    return () => {
+      if (profileUnsub) profileUnsub()
+      unsubscribe()
+    }
   }, [])
 
   return <AuthContext.Provider value={{ user, firebaseUser, loading }}>{children}</AuthContext.Provider>

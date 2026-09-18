@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ChevronLeft, ChevronRight, CalendarIcon } from "lucide-react"
+import { PortalPageHeader } from "@/components/portal/page-header"
 
 export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -66,11 +67,8 @@ export default function CalendarPage() {
   const monthName = currentDate.toLocaleString("default", { month: "long", year: "numeric" })
 
   return (
-    <div className="space-y-6 pb-20">
-      <div>
-        <h1 className="text-2xl font-bold mb-2">Calendar</h1>
-        <p className="text-gray-600">Track events and mark your attendance</p>
-      </div>
+    <div className="space-y-6 px-4 py-6 lg:px-6 lg:pb-8">
+      <PortalPageHeader title="Calendar" description="Track events and mark your attendance" />
 
       <Card>
         <CardHeader>

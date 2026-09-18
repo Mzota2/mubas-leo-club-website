@@ -1,4 +1,25 @@
 export type UserRole = "public" | "member" | "leader" | "admin"
+export type MembershipType = "leo" | "prospective-leo"
+export type JoinIntent = "joining" | "existing"
+export type MembershipStatus = "pending" | "active" | "inactive" | "suspended"
+export type FeePeriod = "monthly" | "semester" | "yearly"
+
+export interface MembershipFee {
+  id: string
+  userId: string
+  amount: number
+  period: FeePeriod
+  coverageStart: string
+  coverageEnd: string
+  paymentDate?: string
+  dueDate: string
+  status: "paid" | "pending" | "overdue"
+  method?: "paychangu" | "offline"
+  txRef?: string
+  notes?: string
+  recordedBy?: string
+  createdAt: string
+}
 
 export interface User {
   id: string
@@ -11,12 +32,17 @@ export interface User {
   dateOfBirth: string
   profileImage?: string
   role: UserRole
-  leoId?: string
-  membershipStatus?: "active" | "inactive" | "suspended"
+  membershipType: MembershipType
+  leoId: string // Auto-generated, required
+  joinIntent?: JoinIntent
+  membershipStatus?: MembershipStatus
   position?: string
   region?: string
   zone?: string
   joinedDate?: string
+  whatsappGroupLink?: string // For newly promoted leos
+  trainingStatus?: "pending" | "completed" | "waived"
+  trainingCompletedAt?: string
   createdAt: string
   updatedAt: string
 }
@@ -71,6 +97,18 @@ export interface Order {
   updatedAt: string
 }
 
+export interface DonationCause {
+  id: string
+  title: string
+  description: string
+  image?: string
+  targetAmount?: number
+  currentAmount: number
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 export interface Donation {
   id: string
   userId?: string
@@ -78,6 +116,8 @@ export interface Donation {
   donorName: string
   donorEmail: string
   message?: string
+  causeId?: string
+  causeTitle?: string
   txRef?: string
   currency?: string
   paymentStatus: "pending" | "completed" | "failed"
@@ -121,6 +161,64 @@ export interface Training {
   createdAt: string
 }
 
+export type TrainingResourceType = "youtube" | "video" | "article"
+
+export interface TrainingResource {
+  id: string
+  type: TrainingResourceType
+  title: string
+  url?: string
+  body?: string
+}
+
+export interface TrainingQuizQuestion {
+  id: string
+  prompt: string
+  options: string[]
+  correctIndex: number
+}
+
+export interface TrainingModule {
+  id: string
+  title: string
+  description: string
+  order: number
+  xp: number
+  isPublished: boolean
+  resources: TrainingResource[]
+  quiz: {
+    passingScore: number
+    questions: TrainingQuizQuestion[]
+  }
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TrainingQuizAttempt {
+  moduleId: string
+  score: number
+  passed: boolean
+  attemptedAt: string
+}
+
+export interface TrainingProgress {
+  id: string
+  userId: string
+  xp: number
+  badges: string[]
+  completedModuleIds: string[]
+  viewedResourceIds: string[]
+  quizAttempts: TrainingQuizAttempt[]
+  status: "not_started" | "in_progress" | "completed" | "waived"
+  waived?: boolean
+  waivedBy?: string
+  waivedReason?: string
+  waivedAt?: string
+  completedAt?: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface GalleryImage {
   id: string
   url: string
@@ -129,6 +227,14 @@ export interface GalleryImage {
   eventId?: string
   uploadedBy: string
   createdAt: string
+}
+
+export interface MembershipBillingSettings {
+  monthlyFee: number
+  semesterFee: number
+  yearlyFee: number
+  semesterStart: string
+  semesterEnd: string
 }
 
 export interface PlatformSettings {
@@ -141,5 +247,49 @@ export interface PlatformSettings {
     birthdayNotifications: boolean
     paymentNotifications: boolean
   }
+  membership?: MembershipBillingSettings
   updatedAt: string
+}
+
+export interface Meeting {
+  id: string
+  title: string
+  date: string
+  time: string
+  location: string
+  description?: string
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Attendance {
+  id: string
+  meetingId: string
+  userId: string
+  status: "present" | "absent" | "excused"
+  penalty?: {
+    amount: number
+    reason: string
+    status: "pending" | "paid" | "waived"
+    dueDate: string
+  }
+  notes?: string
+  createdAt: string
+}
+
+export interface AttendanceRecord {
+  meeting: Meeting
+  attendees: Array<{
+    user: User
+    attendance: Attendance
+  }>
+  absentees: Array<{
+    user: User
+    attendance: Attendance
+  }>
+  excused: Array<{
+    user: User
+    attendance: Attendance
+  }>
 }

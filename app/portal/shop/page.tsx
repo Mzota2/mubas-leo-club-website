@@ -1,168 +1,87 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
-import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Search, ShoppingCart, Menu } from "lucide-react"
-import { useCartStore } from "@/lib/store/cart-store"
+import { ChevronRight } from "lucide-react"
+import { ShopSearch } from "@/components/shop/shop-search"
+import { ShopTopBar } from "@/components/shop/shop-top-bar"
+import { ProductArt } from "@/components/shop/product-art"
+import { PromoCarousel } from "@/components/shop/promo-carousel"
+import { portalCanvasTitle } from "@/components/portal/styles"
+import { getProductsByCategory, shopCategories, shopProducts } from "@/lib/shop/catalog"
+import { promoSlides } from "@/lib/media"
+import { formatMoney } from "@/lib/utils/format"
 
 export default function ShopPage() {
-  const [selectedCategory, setSelectedCategory] = useState("all")
-  const totalItems = useCartStore((state) => state.getTotalItems())
+  const [query, setQuery] = useState("")
 
-  const categories = [
-    { id: "all", label: "All", image: "/valentines-special.jpg" },
-    { id: "tshirt", label: "T-shirts", image: "/tshirt-category.jpg" },
-    { id: "golfshirt", label: "Golf-Shirts", image: "/golfshirt-category.jpg" },
-    { id: "cap", label: "Caps", image: "/caps-category.jpg" },
-    { id: "mug", label: "Mugs", image: "/mugs-category.jpg" },
-    { id: "calendar", label: "Calendars", image: "/calendars-category.jpg" },
-  ]
+  const visibleProducts = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return shopProducts
+    return shopProducts.filter(
+      (product) =>
+        product.name.toLowerCase().includes(q) ||
+        product.hashtag.toLowerCase().includes(q) ||
+        product.category.toLowerCase().includes(q),
+    )
+  }, [query])
 
-  const products = [
-    {
-      id: "1",
-      name: "Black T-shirt",
-      category: "tshirt",
-      price: 15000,
-      image: "/tshirt-black.jpg",
-      inStock: true,
-    },
-    {
-      id: "2",
-      name: "Yellow T-shirt",
-      category: "tshirt",
-      price: 15000,
-      image: "/tshirt-yellow.jpg",
-      inStock: true,
-    },
-    {
-      id: "3",
-      name: "Black Golf Shirt",
-      category: "golfshirt",
-      price: 25000,
-      image: "/golfshirt-black.jpg",
-      inStock: true,
-    },
-    {
-      id: "4",
-      name: "Green Golf Shirt",
-      category: "golfshirt",
-      price: 25000,
-      image: "/golfshirt-green.jpg",
-      inStock: true,
-    },
-  ]
-
-  const filteredProducts =
-    selectedCategory === "all" ? products : products.filter((p) => p.category === selectedCategory)
+  const filteredCategories = useMemo(() => {
+    if (!query.trim()) return shopCategories
+    return shopCategories.filter((category) => getProductsByCategory(category.id).some((product) => visibleProducts.includes(product)))
+  }, [query, visibleProducts])
 
   return (
-    <div className="px-4 py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between text-white">
-        <h1 className="text-xl font-bold">Shop Now</h1>
-        <div className="flex items-center gap-3">
-          <button className="p-2 bg-white/10 rounded-lg">
-            <Menu className="h-5 w-5" />
-          </button>
-          <Link href="/portal/shop/cart" className="relative p-2 bg-white/10 rounded-lg">
-            <ShoppingCart className="h-5 w-5" />
-            {totalItems > 0 && (
-              <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 bg-white text-leo-primary text-xs">
-                {totalItems}
-              </Badge>
-            )}
-          </Link>
-        </div>
-      </div>
+    <div className="space-y-5 px-4 py-5 lg:px-6 lg:py-8">
+      <ShopTopBar title="Shop Now" />
+      <ShopSearch value={query} onChange={setQuery} />
 
-      {/* Search Bar */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-        <Input
-          placeholder="What do you want to buy ?"
-          className="pl-10 bg-white/90 backdrop-blur-sm border-none rounded-xl h-12"
-        />
-      </div>
+      {!query.trim() ? <PromoCarousel slides={promoSlides} /> : null}
 
-      {/* Featured Banner */}
-      <Card className="bg-gradient-to-br from-red-600 to-pink-600 border-none overflow-hidden">
-        <CardContent className="p-0">
-          <div className="aspect-video relative">
-            <img src="/images/shop.png" alt="Valentines Special" className="w-full h-full object-cover" />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Categories */}
-      <div>
-        <h2 className="text-white font-semibold mb-4">Categories</h2>
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              onClick={() => setSelectedCategory(category.id)}
-              className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium transition-colors ${
-                selectedCategory === category.id
-                  ? "bg-white text-leo-primary"
-                  : "bg-white/10 text-white hover:bg-white/20"
-              }`}
-            >
-              {category.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Products Grid */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-white font-semibold">
-            {selectedCategory === "all" ? "All Products" : categories.find((c) => c.id === selectedCategory)?.label}
-          </h2>
-          <Link href="/portal/shop/products" className="text-white text-sm">
-            See all
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          {filteredProducts.map((product) => (
-            <Link key={product.id} href={`/portal/shop/products/${product.id}`}>
-              <Card className="bg-white/90 backdrop-blur-sm border-none overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 relative">
-                  {product.inStock && (
-                    <div className="absolute top-2 left-2">
-                      <div className="bg-green-500 text-white text-xs px-2 py-1 rounded-full">✓</div>
-                    </div>
-                  )}
+      <section className="space-y-3">
+        <h2 className={`font-semibold ${portalCanvasTitle}`}>Categories</h2>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {filteredCategories.map((category) => {
+            const thumbs = getProductsByCategory(category.id).slice(0, 2)
+            return (
+              <Link
+                key={category.id}
+                href={`/portal/shop/category/${category.id}`}
+                className="flex items-center gap-3 rounded-md bg-white p-2 pr-3 shadow-sm"
+              >
+                <p className="w-[4.5rem] shrink-0 text-sm font-semibold leading-tight text-neutral-900 sm:w-24 sm:text-base">
+                  {category.label}
+                </p>
+                <div className="flex min-w-0 flex-1 gap-2">
+                  {thumbs.map((product) => (
+                    <ProductArt key={product.id} product={product} className="h-[4.5rem] w-[4.5rem] shrink-0" />
+                  ))}
                 </div>
-                <CardContent className="p-3">
-                  <h3 className="font-medium text-sm mb-1">{product.name}</h3>
-                  <p className="text-leo-primary font-bold">MWK {product.price.toLocaleString()}</p>
-                </CardContent>
-              </Card>
+                <ChevronRight className="h-6 w-6 shrink-0 text-[#7F1D1D]" />
+              </Link>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className={`font-semibold ${portalCanvasTitle}`}>In the shop</h2>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {visibleProducts.map((product) => (
+            <Link
+              key={product.id}
+              href={`/portal/shop/products/${product.id}`}
+              className="overflow-hidden rounded-md bg-white shadow-sm"
+            >
+              <ProductArt product={product} className="aspect-square" />
+              <div className="space-y-0.5 px-2.5 py-2">
+                <p className="line-clamp-1 text-sm font-medium text-neutral-900">{product.name}</p>
+                <p className="text-xs font-semibold text-leo-primary">{formatMoney(product.price)}</p>
+              </div>
             </Link>
           ))}
         </div>
-      </div>
-
-      {/* Product Description Card */}
-      {selectedCategory === "tshirt" && (
-        <Card className="bg-gradient-to-br from-[#92400E] to-[#78350F] text-white border-none">
-          <CardContent className="p-6">
-            <h3 className="font-semibold mb-2">T-shirts</h3>
-            <p className="text-sm opacity-90 mb-4">
-              High-quality Leo Club branded t-shirts. Available in various colors and sizes. Perfect for events and
-              everyday wear.
-            </p>
-            <Button className="bg-[#F59E0B] hover:bg-[#D97706] text-white w-full">View All T-shirts</Button>
-          </CardContent>
-        </Card>
-      )}
+      </section>
     </div>
   )
 }

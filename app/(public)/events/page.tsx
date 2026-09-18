@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Calendar, MapPin, Users } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { media } from "@/lib/media"
 
 export default function EventsPage() {
   const upcomingEvents = [
@@ -9,31 +10,31 @@ export default function EventsPage() {
       id: 1,
       title: "Blood Donation Drive",
       description: "Join us for our annual blood donation campaign at Community Hospital",
-      date: "July 15, 2025",
-      time: "9:00 AM - 4:00 PM",
-      location: "Community Hospital, Blantyre",
+      date: "June 14, 2025",
+      time: "8:00 AM - 4:00 PM",
+      location: "Area 25 Community Hospital, Lilongwe",
       category: "Health Causes",
-      image: "/images/home-20-20screen.jpg",
+      image: media.posters.bloodDrive,
     },
     {
       id: 2,
-      title: "Environmental Clean-up",
-      description: "Community clean-up and tree planting initiative at Michiru Mountain",
-      date: "July 22, 2025",
-      time: "7:00 AM - 12:00 PM",
-      location: "Michiru Mountain, Blantyre",
-      category: "Environment",
-      image: "/tree-planting-cleanup.jpg",
+      title: "Changeover BBQ Party",
+      description: "Celebrate the new Leo year with food, music, and fellowship.",
+      date: "June 28, 2025",
+      time: "10:00 AM",
+      location: "Ndirande New Lines, LDP's Residence",
+      category: "Social",
+      image: media.posters.bbq,
     },
     {
       id: 3,
-      title: "Youth Empowerment Workshop",
-      description: "Leadership and skills development workshop for young people",
-      date: "August 5, 2025",
-      time: "2:00 PM - 5:00 PM",
-      location: "MUBAS Main Hall",
+      title: "Community Support Visit",
+      description: "Visiting people with special needs and supporting needy students",
+      date: "March 29, 2025",
+      time: "8:00 AM - 11:00 AM",
+      location: "MUBAS Campus",
       category: "Community Service",
-      image: "/youth-workshop-leadership.jpg",
+      image: media.posters.specialNeeds,
     },
   ]
 
@@ -57,7 +58,9 @@ export default function EventsPage() {
             {upcomingEvents.map((event) => (
               <Card key={event.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                 <div className="md:flex">
-                  <div className="md:w-1/3 h-48 md:h-auto relative bg-gradient-to-br from-leo-primary to-leo-secondary" />
+                  <div className="relative md:w-1/3 h-48 md:h-auto min-h-[12rem] bg-neutral-100">
+                    <img src={event.image} alt={event.title} className="h-full w-full object-cover" />
+                  </div>
                   <CardContent className="md:w-2/3 p-6">
                     <div className="flex items-start justify-between mb-4">
                       <Badge className="bg-leo-primary text-white">{event.category}</Badge>

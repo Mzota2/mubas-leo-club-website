@@ -5,7 +5,9 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Search, Users, Mail, Phone } from "lucide-react"
+import { Search, Mail, Phone } from "lucide-react"
+import { PortalPageHeader } from "@/components/portal/page-header"
+import { media } from "@/lib/media"
 
 export default function MyClubPage() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -18,7 +20,7 @@ export default function MyClubPage() {
       username: "leomzota",
       position: "Membership Chair",
       role: "Executive",
-      image: "/professional-male-headshot.png",
+      image: media.people.male,
       email: "leo@mubasleoclub.org",
       phone: "+265 981 81 93 89",
     },
@@ -28,7 +30,7 @@ export default function MyClubPage() {
       username: "janebanda",
       position: "President",
       role: "Executive",
-      image: "/professional-headshot-female.png",
+      image: media.people.female,
       email: "jane@mubasleoclub.org",
     },
     {
@@ -37,7 +39,7 @@ export default function MyClubPage() {
       username: "johnphiri",
       position: "Vice President",
       role: "Executive",
-      image: "/professional-headshot-male-2.png",
+      image: media.people.male2,
       email: "john@mubasleoclub.org",
     },
     {
@@ -46,7 +48,7 @@ export default function MyClubPage() {
       username: "gracechirwa",
       position: "Secretary",
       role: "Executive",
-      image: "/professional-headshot-female-2.png",
+      image: media.people.female2,
       email: "grace@mubasleoclub.org",
     },
   ]
@@ -59,15 +61,8 @@ export default function MyClubPage() {
   )
 
   return (
-    <div className="px-4 py-6 space-y-6">
-      {/* Header */}
-      <div className="text-white">
-        <h1 className="text-2xl font-bold mb-2">My Club</h1>
-        <div className="flex items-center gap-2 text-sm">
-          <Users className="h-4 w-4" />
-          <span>{members.length} Active Members</span>
-        </div>
-      </div>
+    <div className="space-y-6 px-4 py-6 lg:px-6 lg:py-8">
+      <PortalPageHeader title="My club" description={`${members.length} active members`} />
 
       {/* Search Bar */}
       <div className="relative">
@@ -76,12 +71,12 @@ export default function MyClubPage() {
           placeholder="Search members..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 bg-white/90 backdrop-blur-sm border-none rounded-xl h-12"
+          className="pl-10 bg-white/90 backdrop-blur-sm border-none rounded-md h-12"
         />
       </div>
 
       {/* Members List */}
-      <div className="space-y-3">
+      <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
         {filteredMembers.map((member) => (
           <Card key={member.id} className="bg-white/90 backdrop-blur-sm border-none hover:shadow-lg transition-shadow">
             <CardContent className="p-4">

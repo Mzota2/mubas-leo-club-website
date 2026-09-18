@@ -1,18 +1,21 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
+import { AdminPageHeader } from "@/components/admin/page-header"
 import { usePlatformSettings, useUpdatePlatformSettings } from "@/lib/hooks/use-settings"
+import { useToast } from "@/hooks/use-toast"
 
 export default function AdminSettingsPage() {
   const { data: settings, isLoading } = usePlatformSettings()
   const updateSettings = useUpdatePlatformSettings()
+  const { toast } = useToast()
 
   const [clubName, setClubName] = useState("")
   const [clubEmail, setClubEmail] = useState("")
@@ -21,6 +24,11 @@ export default function AdminSettingsPage() {
   const [eventReminders, setEventReminders] = useState(true)
   const [birthdayNotifications, setBirthdayNotifications] = useState(true)
   const [paymentNotifications, setPaymentNotifications] = useState(true)
+  const [monthlyFee, setMonthlyFee] = useState("1000")
+  const [semesterFee, setSemesterFee] = useState("5000")
+  const [yearlyFee, setYearlyFee] = useState("10000")
+  const [semesterStart, setSemesterStart] = useState("")
+  const [semesterEnd, setSemesterEnd] = useState("")
 
   useEffect(() => {
     if (!settings) return
@@ -31,9 +39,14 @@ export default function AdminSettingsPage() {
     setEventReminders(settings.notifications.eventReminders)
     setBirthdayNotifications(settings.notifications.birthdayNotifications)
     setPaymentNotifications(settings.notifications.paymentNotifications)
+    setMonthlyFee(String(settings.membership?.monthlyFee ?? 1000))
+    setSemesterFee(String(settings.membership?.semesterFee ?? 5000))
+    setYearlyFee(String(settings.membership?.yearlyFee ?? 10000))
+    setSemesterStart(settings.membership?.semesterStart ?? "")
+    setSemesterEnd(settings.membership?.semesterEnd ?? "")
   }, [settings])
 
-  const handleSaveClubInfo = async () => {
+  const handleSave = async () => {
     await updateSettings.mutateAsync({
       clubName,
       clubEmail,
@@ -44,110 +57,126 @@ export default function AdminSettingsPage() {
         birthdayNotifications,
         paymentNotifications,
       },
+      membership: {
+        monthlyFee: Number(monthlyFee) || 0,
+        semesterFee: Number(semesterFee) || 0,
+        yearlyFee: Number(yearlyFee) || 0,
+        semesterStart,
+        semesterEnd,
+      },
+    })
+    toast({
+      title: "Settings saved",
+      description: "Club information and notification preferences were updated.",
     })
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Admin Settings</h1>
-        <p className="text-gray-600">Manage platform settings and configurations</p>
+      <AdminPageHeader
+        title="Settings"
+        description="Update club contact details, membership fees, and notification preferences."
+        actions={
+          <Button className="bg-leo-primary hover:bg-leo-primary-dark" onClick={handleSave} disabled={isLoading || updateSettings.isPending}>
+            Save changes
+          </Button>
+        }
+      />
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card className="rounded-md border-border/60 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">Club information</CardTitle>
+            <CardDescription>Shown across public and member-facing pages.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="clubName">Club name</Label>
+                  <Input id="clubName" value={clubName} onChange={(event) => setClubName(event.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="clubEmail">Contact email</Label>
+                  <Input id="clubEmail" type="email" value={clubEmail} onChange={(event) => setClubEmail(event.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="clubPhone">Contact phone</Label>
+                  <Input id="clubPhone" value={clubPhone} onChange={(event) => setClubPhone(event.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="clubAddress">Address</Label>
+                  <Textarea id="clubAddress" value={clubAddress} onChange={(event) => setClubAddress(event.target.value)} />
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-md border-border/60 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">Notifications</CardTitle>
+            <CardDescription>Control which automated messages the platform sends.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between rounded-md border border-border/60 p-4">
+              <div>
+                <Label>Event reminders</Label>
+                <p className="text-sm text-muted-foreground">Send reminders for upcoming events</p>
+              </div>
+              <Switch checked={eventReminders} onCheckedChange={setEventReminders} disabled={isLoading} />
+            </div>
+            <div className="flex items-center justify-between rounded-md border border-border/60 p-4">
+              <div>
+                <Label>Birthday notifications</Label>
+                <p className="text-sm text-muted-foreground">Notify members of birthdays</p>
+              </div>
+              <Switch checked={birthdayNotifications} onCheckedChange={setBirthdayNotifications} disabled={isLoading} />
+            </div>
+            <div className="flex items-center justify-between rounded-md border border-border/60 p-4">
+              <div>
+                <Label>Payment notifications</Label>
+                <p className="text-sm text-muted-foreground">Send payment confirmation emails</p>
+              </div>
+              <Switch checked={paymentNotifications} onCheckedChange={setPaymentNotifications} disabled={isLoading} />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <Card>
+      <Card className="rounded-md border-border/60 shadow-sm">
         <CardHeader>
-          <CardTitle>Club Information</CardTitle>
+          <CardTitle className="text-lg font-semibold">Membership fees</CardTitle>
+          <CardDescription>Amounts and the current semester window used for payment tracking.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-20 w-full" />
-            </div>
-          ) : (
-            <>
-              <div>
-                <Label htmlFor="clubName">Club Name</Label>
-                <Input id="clubName" value={clubName} onChange={(e) => setClubName(e.target.value)} />
-              </div>
-              <div>
-                <Label htmlFor="clubEmail">Contact Email</Label>
-                <Input id="clubEmail" type="email" value={clubEmail} onChange={(e) => setClubEmail(e.target.value)} />
-              </div>
-              <div>
-                <Label htmlFor="clubPhone">Contact Phone</Label>
-                <Input id="clubPhone" value={clubPhone} onChange={(e) => setClubPhone(e.target.value)} />
-              </div>
-              <div>
-                <Label htmlFor="clubAddress">Address</Label>
-                <Textarea id="clubAddress" value={clubAddress} onChange={(e) => setClubAddress(e.target.value)} />
-              </div>
-              <Button
-                className="bg-leo-primary hover:bg-leo-primary-dark"
-                onClick={handleSaveClubInfo}
-                disabled={updateSettings.isPending}
-              >
-                Save Changes
-              </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Notification Settings</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label>Event Reminders</Label>
-              <p className="text-sm text-gray-600">Send reminders for upcoming events</p>
-            </div>
-            <Switch checked={eventReminders} onCheckedChange={setEventReminders} disabled={isLoading} />
+        <CardContent className="grid gap-4 md:grid-cols-3">
+          <div className="space-y-2">
+            <Label htmlFor="monthlyFee">Monthly (MWK)</Label>
+            <Input id="monthlyFee" type="number" value={monthlyFee} onChange={(event) => setMonthlyFee(event.target.value)} />
           </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <Label>Birthday Notifications</Label>
-              <p className="text-sm text-gray-600">Notify members of birthdays</p>
-            </div>
-            <Switch checked={birthdayNotifications} onCheckedChange={setBirthdayNotifications} disabled={isLoading} />
+          <div className="space-y-2">
+            <Label htmlFor="semesterFee">Semester (MWK)</Label>
+            <Input id="semesterFee" type="number" value={semesterFee} onChange={(event) => setSemesterFee(event.target.value)} />
           </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <Label>Payment Notifications</Label>
-              <p className="text-sm text-gray-600">Send payment confirmation emails</p>
-            </div>
-            <Switch checked={paymentNotifications} onCheckedChange={setPaymentNotifications} disabled={isLoading} />
+          <div className="space-y-2">
+            <Label htmlFor="yearlyFee">Yearly (MWK)</Label>
+            <Input id="yearlyFee" type="number" value={yearlyFee} onChange={(event) => setYearlyFee(event.target.value)} />
           </div>
-          <Button
-            className="bg-leo-primary hover:bg-leo-primary-dark"
-            onClick={handleSaveClubInfo}
-            disabled={updateSettings.isPending}
-          >
-            Save Preferences
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Payment Integration</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="paychanguKey">PayChangu API Key</Label>
-            <Input id="paychanguKey" type="password" placeholder="Configured in .env.local" disabled />
+          <div className="space-y-2">
+            <Label htmlFor="semesterStart">Semester start</Label>
+            <Input id="semesterStart" type="date" value={semesterStart} onChange={(event) => setSemesterStart(event.target.value)} />
           </div>
-          <div>
-            <Label htmlFor="paychanguSecret">PayChangu Secret Key</Label>
-            <Input id="paychanguSecret" type="password" placeholder="Configured in .env.local" disabled />
+          <div className="space-y-2">
+            <Label htmlFor="semesterEnd">Semester end</Label>
+            <Input id="semesterEnd" type="date" value={semesterEnd} onChange={(event) => setSemesterEnd(event.target.value)} />
           </div>
-          <Button className="bg-leo-primary hover:bg-leo-primary-dark" disabled>
-            Update Keys
-          </Button>
         </CardContent>
       </Card>
     </div>

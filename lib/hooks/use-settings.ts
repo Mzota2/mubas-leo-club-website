@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { getPlatformSettings, updatePlatformSettings } from "@/lib/firebase/firestore"
 import type { PlatformSettings } from "@/lib/types"
+import { defaultMembershipBilling } from "@/lib/membership/billing"
 
 const defaultSettings: PlatformSettings = {
   clubName: "MUBAS Leo Club",
@@ -14,13 +15,22 @@ const defaultSettings: PlatformSettings = {
     birthdayNotifications: true,
     paymentNotifications: true,
   },
+  membership: defaultMembershipBilling,
   updatedAt: new Date().toISOString(),
 }
 
 export function usePlatformSettings() {
   return useQuery({
     queryKey: ["settings", "platform"],
-    queryFn: async () => (await getPlatformSettings()) ?? defaultSettings,
+    queryFn: async () => {
+      const settings = (await getPlatformSettings()) ?? defaultSettings
+      return {
+        ...defaultSettings,
+        ...settings,
+        notifications: { ...defaultSettings.notifications, ...settings.notifications },
+        membership: { ...defaultSettings.membership, ...settings.membership },
+      }
+    },
   })
 }
 

@@ -14,7 +14,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (loading) return
 
-    if (!user) {
+    if (!firebaseUser) {
       router.push("/auth/login")
       return
     }
@@ -27,6 +27,15 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }, [user, firebaseUser, loading, router])
 
   if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-leo-primary" />
+      </div>
+    )
+  }
+
+  // Firebase auth session exists, but Firestore profile may still be loading/creating.
+  if (firebaseUser && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-leo-primary" />

@@ -1,0 +1,129 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isAdminOrLeader() {
+      return signedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'leader'];
+    }
+
+    match /users/{userId} {
+      allow create: if isOwner(userId)
+        && request.resource.data.role == 'member'
+        && request.resource.data.membershipStatus in ['active', 'pending']
+        && request.resource.data.membershipType in ['leo', 'prospective-leo']
+        && request.resource.data.email is string
+        && request.resource.data.firstName is string
+        && request.resource.data.lastName is string
+        && request.resource.data.username is string;
+      allow read: if isOwner(userId) || isAdminOrLeader();
+
+      allow update: if isOwner(userId) &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.membershipStatus == resource.data.membershipStatus &&
+        request.resource.data.email == resource.data.email;
+
+      allow update: if isAdminOrLeader();
+
+      allow delete: if false;
+    }
+
+    match /events/{eventId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminOrLeader();
+    }
+
+    match /gallery/{imageId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminOrLeader();
+    }
+
+    match /settings/{docId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminOrLeader();
+    }
+
+    match /donations/{donationId} {
+      allow read: if isAdminOrLeader();
+
+      // Allow public creation of pending donation records (used by server API route).
+      allow create: if !signedIn()
+        && request.resource.data.paymentStatus == 'pending'
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0
+        && request.resource.data.donorEmail is string
+        && request.resource.data.donorName is string
+        && request.resource.data.txRef is string
+        && request.resource.data.fiscalYear is string
+        && request.resource.data.createdAt is string;
+
+      // Allow server callback to update status without auth, but only allow status changes.
+      allow update: if !signedIn()
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['paymentStatus'])
+        && request.resource.data.txRef == resource.data.txRef
+        && request.resource.data.paymentStatus in ['completed', 'failed'];
+
+      allow update, delete: if isAdminOrLeader();
+    }
+
+    match /orders/{orderId} {
+      allow read: if signedIn() && request.auth.uid == resource.data.userId;
+      allow create: if signedIn() && request.auth.uid == request.resource.data.userId;
+      allow update: if isAdminOrLeader();
+      allow delete: if false;
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if signedIn() && request.auth.uid == resource.data.userId;
+      allow create, update: if isAdminOrLeader();
+      allow delete: if false;
+    }
+
+    match /membershipFees/{feeId} {
+      allow read: if isAdminOrLeader() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdminOrLeader() || (
+        signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status in ['pending', 'paid']
+      ) || (
+        !signedIn()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.amount is number
+        && request.resource.data.userId is string
+        && request.resource.data.txRef is string
+      );
+      allow update: if isAdminOrLeader();
+      allow update: if !signedIn()
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'paymentDate'])
+        && request.resource.data.txRef == resource.data.txRef
+        && request.resource.data.status in ['paid', 'pending'];
+      allow delete: if isAdminOrLeader();
+    }
+
+    match /trainingModules/{moduleId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdminOrLeader();
+    }
+
+    match /trainingProgress/{userId} {
+      allow read: if isOwner(userId) || isAdminOrLeader();
+      allow create, update: if isAdminOrLeader() || (
+        isOwner(userId)
+        && request.resource.data.status != 'waived'
+        && request.resource.data.waived != true
+      );
+      allow delete: if isAdminOrLeader();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

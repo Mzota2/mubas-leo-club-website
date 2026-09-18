@@ -114,17 +114,17 @@ export default function MembershipPage() {
               {
                 step: "1",
                 title: "Register",
-                description: "Create an account on our platform",
+                description: "Create an account and join as a prospective Leo",
               },
               {
                 step: "2",
-                title: "Apply",
-                description: "Fill out the membership application form",
+                title: "Complete training",
+                description: "Study each module and pass the quiz with at least 50%",
               },
               {
                 step: "3",
-                title: "Get Started",
-                description: "Attend orientation and start making a difference",
+                title: "Become a Leo",
+                description: "A passing score promotes you to full membership",
               },
             ].map((item) => (
               <div key={item.step} className="text-center">
@@ -141,7 +141,7 @@ export default function MembershipPage() {
         {/* CTA */}
         <div className="text-center">
           <Button asChild size="lg" className="bg-leo-primary hover:bg-leo-primary-dark text-white">
-            <Link href="/auth/register">Apply for Membership</Link>
+            <Link href="/auth/register?redirect=/portal/training">Register and start training</Link>
           </Button>
         </div>
       </div>

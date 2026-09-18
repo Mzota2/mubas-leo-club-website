@@ -1,138 +1,97 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ComponentProps } from "react"
+import { IdCard } from "lucide-react"
 import { useAuth } from "@/lib/hooks/use-auth"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Camera } from "lucide-react"
 
 export default function ProfilePage() {
   const { user } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
 
+  const fieldClass =
+    "h-12 rounded-md border-none bg-[#9A3412]/55 text-white shadow-none placeholder:text-white/70 disabled:opacity-90"
+
   return (
-    <div className="px-4 py-6 space-y-6">
-      {/* Profile Header */}
-      <Card className="bg-white/90 backdrop-blur-sm border-none shadow-lg overflow-hidden">
-        <div className="h-24 bg-gradient-to-r from-[#F59E0B] to-[#DC2626]" />
-        <CardContent className="relative pt-16 pb-6">
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2">
-            <div className="relative">
-              <Avatar className="h-24 w-24 border-4 border-white shadow-lg">
-                <AvatarImage src={user?.profileImage || "/placeholder.svg"} />
-                <AvatarFallback className="bg-gradient-to-br from-[#F59E0B] to-[#DC2626] text-white text-2xl font-bold">
-                  {user?.firstName?.[0]}
-                  {user?.lastName?.[0]}
-                </AvatarFallback>
-              </Avatar>
-              <button className="absolute bottom-0 right-0 p-2 bg-[#F59E0B] rounded-full text-white shadow-lg">
-                <Camera className="h-4 w-4" />
-              </button>
+    <div className="space-y-5 px-4 py-5 lg:px-6 lg:py-8">
+      <div className="flex items-center gap-3">
+        <Avatar className="h-16 w-16 border-2 border-white/80">
+          <AvatarImage src={user?.profileImage || "/placeholder.svg"} />
+          <AvatarFallback className="bg-white text-xl font-bold text-leo-primary">
+            {user?.firstName?.[0]}
+            {user?.lastName?.[0]}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex min-w-0 flex-1 gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-md bg-[#92400E] px-3 py-2 text-white">
+            <IdCard className="h-4 w-4 shrink-0" />
+            <div className="min-w-0">
+              <p className="truncate text-xs text-white/80">ID {user?.leoId || "Leo-124537"}</p>
+              <p className="truncate text-sm font-medium">{user?.username || "Leo Mzota"}</p>
             </div>
           </div>
-
-          <div className="text-center mt-2">
-            <h2 className="text-xl font-bold">
-              {user?.firstName} {user?.middleName} {user?.lastName}
-            </h2>
-            <p className="text-sm text-gray-600">@{user?.username}</p>
-            <div className="flex items-center justify-center gap-4 mt-3">
-              <Badge className="bg-[#92400E] text-white">ID {user?.leoId || "Leo-124537"}</Badge>
-              <Badge className="bg-white text-[#DC2626] border border-[#DC2626]">
-                {user?.position || "Membership Chair"}
-              </Badge>
-            </div>
+          <div className="w-28 shrink-0 rounded-md bg-white px-3 py-2">
+            <p className="text-sm font-semibold leading-tight text-[#7F1D1D]">
+              {user?.position || "Membership Chair"}
+            </p>
+            <p className="text-xs text-neutral-500">Executive</p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Profile Form */}
-      <Card className="bg-white/90 backdrop-blur-sm border-none shadow-lg">
-        <CardContent className="p-6 space-y-4">
-          <div>
-            <Label htmlFor="firstName">First Name</Label>
-            <Input
-              id="firstName"
-              defaultValue={user?.firstName}
-              disabled={!isEditing}
-              className="bg-[#F59E0B]/10 border-none"
-            />
-          </div>
+      <form
+        className="space-y-4"
+        onSubmit={(event) => {
+          event.preventDefault()
+          setIsEditing(false)
+        }}
+      >
+        <Field label="First Name" id="firstName" defaultValue={user?.firstName} disabled={!isEditing} className={fieldClass} />
+        <Field label="Middle Name" id="middleName" defaultValue={user?.middleName} disabled={!isEditing} className={fieldClass} />
+        <Field label="Last Name" id="lastName" defaultValue={user?.lastName} disabled={!isEditing} className={fieldClass} />
+        <Field label="User Name" id="username" defaultValue={user?.username} disabled={!isEditing} className={fieldClass} />
+        <Field label="Phone" id="phone" defaultValue={user?.phone} disabled={!isEditing} className={fieldClass} />
+        <Field label="Password" id="password" type="password" defaultValue="••••••••" disabled={!isEditing} className={fieldClass} />
+        <Field
+          label="Date of Birth"
+          id="dateOfBirth"
+          type="date"
+          defaultValue={user?.dateOfBirth}
+          disabled={!isEditing}
+          className={fieldClass}
+        />
 
-          <div>
-            <Label htmlFor="middleName">Middle Name</Label>
-            <Input
-              id="middleName"
-              defaultValue={user?.middleName}
-              disabled={!isEditing}
-              className="bg-[#F59E0B]/10 border-none"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="lastName">Last Name</Label>
-            <Input
-              id="lastName"
-              defaultValue={user?.lastName}
-              disabled={!isEditing}
-              className="bg-[#F59E0B]/10 border-none"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="username">User Name</Label>
-            <Input
-              id="username"
-              defaultValue={user?.username}
-              disabled={!isEditing}
-              className="bg-[#F59E0B]/10 border-none"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="phone">Phone</Label>
-            <Input
-              id="phone"
-              defaultValue={user?.phone}
-              disabled={!isEditing}
-              className="bg-[#F59E0B]/10 border-none"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              defaultValue="••••••••"
-              disabled={!isEditing}
-              className="bg-[#F59E0B]/10 border-none"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="dateOfBirth">Date of Birth</Label>
-            <Input
-              id="dateOfBirth"
-              type="date"
-              defaultValue={user?.dateOfBirth}
-              disabled={!isEditing}
-              className="bg-[#F59E0B]/10 border-none"
-            />
-          </div>
-
+        <div className="flex justify-center pt-2">
           <Button
-            className="w-full bg-[#F59E0B] hover:bg-[#D97706] text-white"
-            onClick={() => setIsEditing(!isEditing)}
+            type={isEditing ? "submit" : "button"}
+            className="h-11 min-w-40 rounded-md bg-[#F59E0B] text-white hover:bg-[#D97706]"
+            onClick={() => {
+              if (!isEditing) setIsEditing(true)
+            }}
           >
             {isEditing ? "Save Changes" : "Edit Profile"}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+function Field({
+  label,
+  id,
+  className,
+  ...props
+}: ComponentProps<typeof Input> & { label: string }) {
+  return (
+    <div>
+      <Label htmlFor={id} className="text-white lg:text-neutral-900">
+        {label}
+      </Label>
+      <Input id={id} className={`mt-1 ${className}`} {...props} />
     </div>
   )
 }

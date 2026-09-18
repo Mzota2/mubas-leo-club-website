@@ -1,296 +1,549 @@
 "use client"
 
 import { useMemo } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, DollarSign, Calendar, TrendingUp } from "lucide-react"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts"
+import Link from "next/link"
+import {
+  ArrowRight,
+  Calendar,
+  DollarSign,
+  Plus,
+  Sparkles,
+  TrendingUp,
+  Users,
+  UserPlus,
+  ClipboardCheck,
+  Image as ImageIcon,
+  CalendarPlus,
+} from "lucide-react"
+import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { AdminStatCard } from "@/components/admin/stat-card"
+import { AdminEmptyState } from "@/components/admin/empty-state"
+import { useAuth } from "@/lib/hooks/use-auth"
 import { useUsers } from "@/lib/hooks/use-users"
 import { useEvents } from "@/lib/hooks/use-events"
 import { useDonations } from "@/lib/hooks/use-donations"
-import type { Donation, Event, User } from "@/lib/types"
+import { displayName, formatMoney, formatRelativeTime, greetingForHour } from "@/lib/utils/format"
+import { categoryColors } from "@/lib/constants/theme"
+import type { Event, User } from "@/lib/types"
+
+const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+const categoryMeta: Record<Event["category"], string> = {
+  health: "Health",
+  environment: "Environment",
+  community: "Community",
+  meeting: "Meetings",
+  fundraising: "Fundraising",
+  social: "Social",
+}
+
+function ChartTooltip({
+  active,
+  payload,
+  label,
+  valuePrefix,
+}: {
+  active?: boolean
+  payload?: { value: number }[]
+  label?: string
+  valuePrefix?: string
+}) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="rounded-md border bg-white px-3 py-2 text-sm shadow-md">
+      <p className="text-muted-foreground">{label}</p>
+      <p className="font-semibold">
+        {valuePrefix}
+        {Number(payload[0].value).toLocaleString()}
+      </p>
+    </div>
+  )
+}
 
 export default function AdminDashboard() {
+  const { user } = useAuth()
   const { data: users, isLoading: usersLoading } = useUsers()
   const { data: events, isLoading: eventsLoading } = useEvents()
   const { data: donations, isLoading: donationsLoading } = useDonations()
 
   const isLoading = usersLoading || eventsLoading || donationsLoading
-
   const now = new Date()
   const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth()
+
+  const userById = useMemo(() => {
+    const map = new Map<string, User>()
+    for (const member of users ?? []) map.set(member.id, member)
+    return map
+  }, [users])
 
   const totals = useMemo(() => {
-    const members = (users ?? []).length
-    const completedDonations = (donations ?? []).filter((d) => d.paymentStatus === "completed")
-    const donationTotal = completedDonations.reduce((sum, d) => sum + (Number(d.amount) || 0), 0)
+    const members = users ?? []
+    const leoCount = members.filter((member) => member.membershipType === "leo").length
+    const prospectiveCount = members.filter((member) => member.membershipType === "prospective-leo").length
+    const activeCount = members.filter((member) => (member.membershipStatus ?? "active") === "active").length
 
-    const eventsThisYear = (events ?? []).filter((e) => {
-      const d = new Date(e.date)
-      return !Number.isNaN(d.getTime()) && d.getFullYear() === currentYear
-    }).length
+    const completedDonations = (donations ?? []).filter((donation) => donation.paymentStatus === "completed")
+    const donationTotal = completedDonations.reduce((sum, donation) => sum + (Number(donation.amount) || 0), 0)
+    const donationThisMonth = completedDonations
+      .filter((donation) => {
+        const date = new Date(donation.createdAt)
+        return date.getFullYear() === currentYear && date.getMonth() === currentMonth
+      })
+      .reduce((sum, donation) => sum + (Number(donation.amount) || 0), 0)
+    const pendingDonations = (donations ?? []).filter((donation) => donation.paymentStatus === "pending").length
+
+    const yearEvents = (events ?? []).filter((event) => {
+      const date = new Date(event.date)
+      return !Number.isNaN(date.getTime()) && date.getFullYear() === currentYear
+    })
+    const upcomingEvents = (events ?? []).filter((event) => event.status === "upcoming").length
 
     const attendees = new Set<string>()
-    for (const e of events ?? []) {
-      for (const uid of e.attendees ?? []) attendees.add(uid)
+    for (const event of events ?? []) {
+      for (const uid of event.attendees ?? []) attendees.add(uid)
     }
-    const participationRate = members ? Math.round((attendees.size / members) * 100) : 0
+    const participationRate = members.length ? Math.round((attendees.size / members.length) * 100) : 0
 
-    return { members, donationTotal, eventsThisYear, participationRate }
-  }, [users, donations, events, currentYear])
-
-  const stats = useMemo(
-    () => [
-      {
-        title: "Total Members",
-        value: isLoading ? "..." : totals.members.toLocaleString(),
-        change: "",
-        icon: Users,
-        color: "text-blue-600",
-        bgColor: "bg-blue-100",
-      },
-      {
-        title: "Total Donations",
-        value: isLoading ? "..." : `MWK ${totals.donationTotal.toLocaleString()}`,
-        change: "",
-        icon: DollarSign,
-        color: "text-green-600",
-        bgColor: "bg-green-100",
-      },
-      {
-        title: "Events This Year",
-        value: isLoading ? "..." : totals.eventsThisYear.toLocaleString(),
-        change: "",
-        icon: Calendar,
-        color: "text-purple-600",
-        bgColor: "bg-purple-100",
-      },
-      {
-        title: "Participation Rate",
-        value: isLoading ? "..." : `${totals.participationRate}%`,
-        change: "",
-        icon: TrendingUp,
-        color: "text-orange-600",
-        bgColor: "bg-orange-100",
-      },
-    ],
-    [isLoading, totals],
-  )
+    return {
+      members: members.length,
+      leoCount,
+      prospectiveCount,
+      activeCount,
+      donationTotal,
+      donationThisMonth,
+      pendingDonations,
+      eventsThisYear: yearEvents.length,
+      upcomingEvents,
+      participationRate,
+      uniqueAttendees: attendees.size,
+    }
+  }, [users, donations, events, currentYear, currentMonth])
 
   const membershipData = useMemo(() => {
-    const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    const createdBeforeYear = (users ?? []).filter((member) => {
+      const date = new Date(member.createdAt)
+      return !Number.isNaN(date.getTime()) && date.getFullYear() < currentYear
+    }).length
+
     const createdByMonth: Record<number, number> = {}
-    for (const u of users ?? []) {
-      const d = new Date(u.createdAt)
-      if (Number.isNaN(d.getTime()) || d.getFullYear() !== currentYear) continue
-      createdByMonth[d.getMonth()] = (createdByMonth[d.getMonth()] ?? 0) + 1
+    for (const member of users ?? []) {
+      const date = new Date(member.createdAt)
+      if (Number.isNaN(date.getTime()) || date.getFullYear() !== currentYear) continue
+      createdByMonth[date.getMonth()] = (createdByMonth[date.getMonth()] ?? 0) + 1
     }
 
-    let running = 0
-    return monthLabels.map((label, idx) => {
-      running += createdByMonth[idx] ?? 0
+    let running = createdBeforeYear
+    return monthLabels.map((label, index) => {
+      running += createdByMonth[index] ?? 0
       return { month: label, members: running }
     })
   }, [users, currentYear])
 
   const donationData = useMemo(() => {
-    const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     const amountByMonth: Record<number, number> = {}
-    for (const d of (donations ?? []).filter((x) => x.paymentStatus === "completed")) {
-      const dt = new Date(d.createdAt)
-      if (Number.isNaN(dt.getTime()) || dt.getFullYear() !== currentYear) continue
-      amountByMonth[dt.getMonth()] = (amountByMonth[dt.getMonth()] ?? 0) + (Number(d.amount) || 0)
+    for (const donation of (donations ?? []).filter((item) => item.paymentStatus === "completed")) {
+      const date = new Date(donation.createdAt)
+      if (Number.isNaN(date.getTime()) || date.getFullYear() !== currentYear) continue
+      amountByMonth[date.getMonth()] = (amountByMonth[date.getMonth()] ?? 0) + (Number(donation.amount) || 0)
     }
-    return monthLabels.map((label, idx) => ({ month: label, amount: amountByMonth[idx] ?? 0 }))
+    return monthLabels.map((label, index) => ({ month: label, amount: amountByMonth[index] ?? 0 }))
   }, [donations, currentYear])
 
   const eventCategoryData = useMemo(() => {
-    const categoryMeta: Record<Event["category"], string> = {
-      health: "Health",
-      environment: "Environment",
-      community: "Community",
-      meeting: "Meetings",
-      fundraising: "Fundraising",
-      social: "Social",
-    }
-
     const counts: Partial<Record<Event["category"], number>> = {}
-    for (const e of events ?? []) {
-      counts[e.category] = (counts[e.category] ?? 0) + 1
+    for (const event of events ?? []) {
+      counts[event.category] = (counts[event.category] ?? 0) + 1
     }
 
     return (Object.keys(categoryMeta) as Event["category"][])
-      .map((cat) => ({ category: categoryMeta[cat], count: counts[cat] ?? 0 }))
-      .filter((x) => x.count > 0)
+      .map((category) => ({
+        category: categoryMeta[category],
+        count: counts[category] ?? 0,
+        fill: categoryColors[category],
+      }))
+      .filter((item) => item.count > 0)
+  }, [events])
+
+  const upcomingEvents = useMemo(() => {
+    return [...(events ?? [])]
+      .filter((event) => event.status === "upcoming" || new Date(event.date).getTime() >= Date.now())
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, 5)
   }, [events])
 
   const recentActivity = useMemo(() => {
-    const activities: { action: string; user: string; time: string }[] = []
+    const activities: {
+      id: string
+      action: string
+      user: string
+      time: string
+      timestamp: number
+      tone: string
+      icon: typeof Sparkles
+    }[] = []
 
-    const recentUsers = [...(users ?? [])]
-      .sort((a: User, b: User) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 2)
-    for (const u of recentUsers) {
+    for (const member of users ?? []) {
       activities.push({
+        id: `user-${member.id}`,
         action: "New member registered",
-        user: `${u.firstName} ${u.lastName}`,
-        time: new Date(u.createdAt).toLocaleString(),
+        user: displayName(member),
+        time: formatRelativeTime(member.createdAt),
+        timestamp: new Date(member.createdAt).getTime(),
+        tone: "bg-sky-50 text-sky-600",
+        icon: UserPlus,
       })
     }
 
-    const recentDonations = [...(donations ?? [])]
-      .filter((d: Donation) => d.paymentStatus === "completed")
-      .sort((a: Donation, b: Donation) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 2)
-    for (const d of recentDonations) {
+    for (const donation of donations ?? []) {
+      if (donation.paymentStatus !== "completed") continue
       activities.push({
-        action: "Donation received",
-        user: d.donorName || d.donorEmail,
-        time: new Date(d.createdAt).toLocaleString(),
+        id: `donation-${donation.id}`,
+        action: `Donation of ${formatMoney(Number(donation.amount) || 0)}`,
+        user: donation.donorName || donation.donorEmail || "Anonymous",
+        time: formatRelativeTime(donation.createdAt),
+        timestamp: new Date(donation.createdAt).getTime(),
+        tone: "bg-emerald-50 text-emerald-600",
+        icon: DollarSign,
       })
     }
 
-    const recentEvents = [...(events ?? [])]
-      .sort((a: Event, b: Event) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 2)
-    for (const e of recentEvents) {
+    for (const event of events ?? []) {
+      const creator = userById.get(event.createdBy)
       activities.push({
+        id: `event-${event.id}`,
         action: "Event created",
-        user: e.createdBy,
-        time: new Date(e.createdAt).toLocaleString(),
+        user: creator ? displayName(creator) : event.title,
+        time: formatRelativeTime(event.createdAt),
+        timestamp: new Date(event.createdAt).getTime(),
+        tone: "bg-violet-50 text-violet-600",
+        icon: CalendarPlus,
       })
     }
 
-    return activities.slice(0, 6)
-  }, [users, donations, events])
+    return activities
+      .filter((item) => Number.isFinite(item.timestamp))
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 7)
+  }, [users, donations, events, userById])
+
+  const prospectiveLeos = useMemo(
+    () => (users ?? []).filter((member) => member.membershipType === "prospective-leo"),
+    [users],
+  )
+
+  const todayLabel = now.toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
-        <p className="text-gray-600">Overview of club performance and analytics</p>
-      </div>
+      <section className="overflow-hidden rounded-md bg-gradient-to-br from-[#F59E0B] via-[#F59E0B] to-[#DC2626] p-6 text-white shadow-sm md:p-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-sm text-white/80">{todayLabel}</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
+              {greetingForHour(now)}, {user?.firstName || "Leader"}
+            </h1>
+            <p className="mt-2 max-w-xl text-sm text-white/85 md:text-base">
+              Review club activity, follow up on members, and keep events and fundraising moving.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="secondary" className="bg-white text-neutral-900 hover:bg-white/90">
+              <Link href="/admin/events">
+                <Plus className="h-4 w-4" />
+                New event
+              </Link>
+            </Button>
+            <Button asChild variant="secondary" className="border-white/30 bg-white/10 text-white hover:bg-white/20">
+              <Link href="/admin/members">
+                <Users className="h-4 w-4" />
+                Manage members
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </section>
 
-      {/* Stats Grid */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => (
-          <Card key={stat.title}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">{stat.title}</p>
-                <p className="text-2xl font-bold mb-1">{stat.value}</p>
-                <p className="text-sm text-green-600">{stat.change}</p>
-              </div>
-            </CardContent>
-          </Card>
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminStatCard
+          title="Total members"
+          value={totals.members.toLocaleString()}
+          hint={`${totals.leoCount} Leo · ${totals.prospectiveCount} prospective`}
+          icon={Users}
+          accent="blue"
+          loading={isLoading}
+        />
+        <AdminStatCard
+          title="Donations received"
+          value={formatMoney(totals.donationTotal)}
+          hint={`${formatMoney(totals.donationThisMonth)} this month`}
+          icon={DollarSign}
+          accent="green"
+          loading={isLoading}
+        />
+        <AdminStatCard
+          title={`Events in ${currentYear}`}
+          value={totals.eventsThisYear.toLocaleString()}
+          hint={`${totals.upcomingEvents} upcoming`}
+          icon={Calendar}
+          accent="purple"
+          loading={isLoading}
+        />
+        <AdminStatCard
+          title="Event reach"
+          value={`${totals.participationRate}%`}
+          hint={`${totals.uniqueAttendees} unique attendees`}
+          icon={TrendingUp}
+          accent="orange"
+          loading={isLoading}
+        />
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          { href: "/admin/events", label: "Create event", icon: Calendar },
+          { href: "/admin/attendance", label: "Record attendance", icon: ClipboardCheck },
+          { href: "/admin/donation-causes", label: "Add a cause", icon: Plus },
+          { href: "/admin/gallery", label: "Upload photos", icon: ImageIcon },
+        ].map((action) => (
+          <Link
+            key={action.href}
+            href={action.href}
+            className="flex items-center justify-between rounded-md border border-border/60 bg-white px-4 py-3 text-sm font-medium shadow-sm transition-all hover:border-leo-primary/40 hover:shadow-md"
+          >
+            <span className="flex items-center gap-2">
+              <action.icon className="h-4 w-4 text-leo-primary" />
+              {action.label}
+            </span>
+            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+          </Link>
         ))}
-      </div>
+      </section>
 
-      {/* Charts Grid */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Membership Growth */}
-        <Card>
+      <section className="grid gap-6 xl:grid-cols-2">
+        <Card className="rounded-md border-border/60 shadow-sm">
           <CardHeader>
-            <CardTitle>Membership Growth</CardTitle>
+            <CardTitle>Membership growth</CardTitle>
+            <CardDescription>Cumulative members through {currentYear}</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <Skeleton className="h-[300px] w-full" />
+              <Skeleton className="h-[280px] w-full" />
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={280}>
                 <LineChart data={membershipData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="members" stroke="#F59E0B" strokeWidth={2} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#78716C" }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#78716C" }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Line type="monotone" dataKey="members" stroke="#F59E0B" strokeWidth={2.5} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
 
-        {/* Donation Trends */}
-        <Card>
+        <Card className="rounded-md border-border/60 shadow-sm">
           <CardHeader>
-            <CardTitle>Donation Trends (MWK)</CardTitle>
+            <CardTitle>Donation trends</CardTitle>
+            <CardDescription>Completed donations in {currentYear} (MWK)</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <Skeleton className="h-[300px] w-full" />
+              <Skeleton className="h-[280px] w-full" />
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={donationData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="amount" fill="#10B981" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#78716C" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 12, fill: "#78716C" }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<ChartTooltip valuePrefix="MWK " />} />
+                  <Bar dataKey="amount" fill="#10B981" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
-      </div>
+      </section>
 
-      {/* Events by Category */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Events by Category (2024)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <Skeleton className="h-[300px] w-full" />
-          ) : eventCategoryData.length === 0 ? (
-            <p className="text-sm text-gray-600">No events found yet.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={eventCategoryData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="category" type="category" />
-                <Tooltip />
-                <Bar dataKey="count" fill="#DC2626" />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Recent Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+      <section className="grid gap-6 xl:grid-cols-5">
+        <Card className="rounded-md border-border/60 shadow-sm xl:col-span-3">
+          <CardHeader>
+            <CardTitle>Events by category</CardTitle>
+            <CardDescription>All recorded events across the club</CardDescription>
+          </CardHeader>
+          <CardContent>
             {isLoading ? (
-              <>
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </>
-            ) : recentActivity.length === 0 ? (
-              <p className="text-sm text-gray-600">No recent activity yet.</p>
+              <Skeleton className="h-[280px] w-full" />
+            ) : eventCategoryData.length === 0 ? (
+              <AdminEmptyState icon={Calendar} title="No events yet" description="Create an event to see category analytics." />
             ) : (
-              recentActivity.map((activity, index) => (
-                <div key={index} className="flex items-center justify-between py-3 border-b last:border-0">
-                  <div>
-                    <p className="font-medium">{activity.action}</p>
-                    <p className="text-sm text-gray-600">{activity.user}</p>
-                  </div>
-                  <p className="text-sm text-gray-500">{activity.time}</p>
-                </div>
-              ))
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={eventCategoryData} layout="vertical" margin={{ left: 16 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" horizontal={false} />
+                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12, fill: "#78716C" }} axisLine={false} tickLine={false} />
+                  <YAxis
+                    dataKey="category"
+                    type="category"
+                    width={110}
+                    tick={{ fontSize: 12, fill: "#78716C" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Bar dataKey="count" radius={[0, 6, 6, 0]}>
+                    {eventCategoryData.map((entry) => (
+                      <Cell key={entry.category} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             )}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-md border-border/60 shadow-sm xl:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Upcoming events</CardTitle>
+              <CardDescription>Next scheduled activities</CardDescription>
+            </div>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/admin/events">View all</Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            ) : upcomingEvents.length === 0 ? (
+              <AdminEmptyState icon={Calendar} title="Nothing upcoming" description="Schedule the next club event." />
+            ) : (
+              <div className="space-y-3">
+                {upcomingEvents.map((event) => (
+                  <div key={event.id} className="rounded-md border border-border/60 bg-[#FBF9F6] p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{event.title}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {new Date(event.date).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                          })}
+                          {event.time ? ` · ${event.time}` : ""} · {event.location}
+                        </p>
+                      </div>
+                      <Badge variant="secondary" className="capitalize">
+                        {event.category}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-5">
+        <Card className="rounded-md border-border/60 shadow-sm xl:col-span-3">
+          <CardHeader>
+            <CardTitle>Recent activity</CardTitle>
+            <CardDescription>Latest members, donations, and events</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ) : recentActivity.length === 0 ? (
+              <AdminEmptyState icon={Sparkles} title="No activity yet" description="Club activity will appear here as it happens." />
+            ) : (
+              <div className="divide-y">
+                {recentActivity.map((activity) => {
+                  const Icon = activity.icon
+                  return (
+                  <div key={activity.id} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className={`rounded-md p-2 ${activity.tone}`}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{activity.action}</p>
+                        <p className="truncate text-sm text-muted-foreground">{activity.user}</p>
+                      </div>
+                    </div>
+                    <p className="shrink-0 text-xs text-muted-foreground">{activity.time}</p>
+                  </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-md border-border/60 shadow-sm xl:col-span-2">
+          <CardHeader>
+            <CardTitle>Needs attention</CardTitle>
+            <CardDescription>Items that may need a follow-up</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Link
+              href="/admin/members"
+              className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-4 py-3 transition-colors hover:bg-amber-100"
+            >
+              <div className="flex items-center gap-3">
+                <UserPlus className="h-4 w-4 text-amber-700" />
+                <div>
+                  <p className="text-sm font-medium text-amber-950">Prospective Leos</p>
+                  <p className="text-xs text-amber-800">Waiting for promotion</p>
+                </div>
+              </div>
+              <span className="text-lg font-semibold text-amber-900">{isLoading ? "—" : prospectiveLeos.length}</span>
+            </Link>
+            <Link
+              href="/admin/donations"
+              className="flex items-center justify-between rounded-md border border-sky-200 bg-sky-50 px-4 py-3 transition-colors hover:bg-sky-100"
+            >
+              <div className="flex items-center gap-3">
+                <DollarSign className="h-4 w-4 text-sky-700" />
+                <div>
+                  <p className="text-sm font-medium text-sky-950">Pending donations</p>
+                  <p className="text-xs text-sky-800">Payments not yet completed</p>
+                </div>
+              </div>
+              <span className="text-lg font-semibold text-sky-900">{isLoading ? "—" : totals.pendingDonations}</span>
+            </Link>
+            <Link
+              href="/admin/members"
+              className="flex items-center justify-between rounded-md border border-border/60 bg-white px-4 py-3 transition-colors hover:bg-neutral-50"
+            >
+              <div className="flex items-center gap-3">
+                <Users className="h-4 w-4 text-neutral-600" />
+                <div>
+                  <p className="text-sm font-medium">Active members</p>
+                  <p className="text-xs text-muted-foreground">Currently in good standing</p>
+                </div>
+              </div>
+              <span className="text-lg font-semibold">{isLoading ? "—" : totals.activeCount}</span>
+            </Link>
+          </CardContent>
+        </Card>
+      </section>
     </div>
   )
 }

@@ -1,12 +1,15 @@
 "use client"
 
 import { useMemo } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Download, FileText, Users, Calendar, DollarSign } from "lucide-react"
+import { AdminPageHeader } from "@/components/admin/page-header"
 import { useUsers } from "@/lib/hooks/use-users"
 import { useEvents } from "@/lib/hooks/use-events"
 import { useDonations } from "@/lib/hooks/use-donations"
+import { downloadCsv } from "@/lib/utils/csv"
+import { formatMoney } from "@/lib/utils/format"
 import type { Donation, Event, User } from "@/lib/types"
 
 export default function ReportsPage() {
@@ -15,7 +18,7 @@ export default function ReportsPage() {
   const { data: donations, isLoading: donationsLoading } = useDonations()
 
   const generatedDate = useMemo(() => {
-    return new Date().toLocaleDateString("en-US", {
+    return new Date().toLocaleDateString("en-GB", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -23,129 +26,109 @@ export default function ReportsPage() {
   }, [])
 
   const donationTotals = useMemo(() => {
-    const completed = (donations ?? []).filter((d) => d.paymentStatus === "completed")
-    const amount = completed.reduce((sum, d) => sum + (Number(d.amount) || 0), 0)
+    const completed = (donations ?? []).filter((donation) => donation.paymentStatus === "completed")
+    const amount = completed.reduce((sum, donation) => sum + (Number(donation.amount) || 0), 0)
     return { completedCount: completed.length, amount }
   }, [donations])
+
+  const isBusy = usersLoading || eventsLoading || donationsLoading
 
   const reports = useMemo(
     () => [
       {
         id: "members",
-        title: "Membership Report",
-        description: `Members: ${usersLoading ? "..." : (users ?? []).length}`,
+        title: "Membership report",
+        description: `Members: ${usersLoading ? "…" : (users ?? []).length}`,
         icon: Users,
-        color: "bg-blue-100 text-blue-600",
-        date: `Generated on ${generatedDate}`,
+        color: "bg-sky-50 text-sky-600",
       },
       {
         id: "donations",
-        title: "Donations Report",
-        description: `Completed donations: ${donationsLoading ? "..." : donationTotals.completedCount} · Total: MWK ${donationsLoading ? "..." : donationTotals.amount.toLocaleString()}`,
+        title: "Donations report",
+        description: `Completed: ${donationsLoading ? "…" : donationTotals.completedCount} · ${donationsLoading ? "…" : formatMoney(donationTotals.amount)}`,
         icon: DollarSign,
-        color: "bg-green-100 text-green-600",
-        date: `Generated on ${generatedDate}`,
+        color: "bg-emerald-50 text-emerald-600",
       },
       {
         id: "events",
-        title: "Events Report",
-        description: `Events: ${eventsLoading ? "..." : (events ?? []).length}`,
+        title: "Events report",
+        description: `Events: ${eventsLoading ? "…" : (events ?? []).length}`,
         icon: Calendar,
-        color: "bg-purple-100 text-purple-600",
-        date: `Generated on ${generatedDate}`,
+        color: "bg-violet-50 text-violet-600",
       },
       {
         id: "summary",
-        title: "Activity Summary",
+        title: "Activity summary",
         description: "High-level overview for leadership",
         icon: FileText,
-        color: "bg-orange-100 text-orange-600",
-        date: `Generated on ${generatedDate}`,
+        color: "bg-orange-50 text-orange-600",
       },
     ],
-    [usersLoading, users, donationsLoading, donationTotals, eventsLoading, events, generatedDate],
+    [usersLoading, users, donationsLoading, donationTotals, eventsLoading, events],
   )
-
-  const downloadCsv = (filename: string, rows: Record<string, unknown>[]) => {
-    const headers = Array.from(
-      rows.reduce((set, row) => {
-        Object.keys(row).forEach((k) => set.add(k))
-        return set
-      }, new Set<string>()),
-    )
-
-    const escape = (value: unknown) => {
-      const s = value === null || value === undefined ? "" : String(value)
-      const escaped = s.replace(/\"/g, '""')
-      return `"${escaped}"`
-    }
-
-    const csv = [headers.join(","), ...rows.map((r) => headers.map((h) => escape((r as any)[h])).join(","))].join("\n")
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    URL.revokeObjectURL(url)
-  }
 
   const handleDownload = (reportId: string) => {
     if (reportId === "members") {
-      const rows = (users ?? []).map((u: User) => ({
-        id: u.id,
-        firstName: u.firstName,
-        middleName: u.middleName,
-        lastName: u.lastName,
-        username: u.username,
-        email: u.email,
-        phone: u.phone,
-        role: u.role,
-        membershipStatus: u.membershipStatus,
-        position: u.position,
-        leoId: u.leoId,
-        createdAt: u.createdAt,
-      }))
-      downloadCsv(`members-report-${Date.now()}.csv`, rows)
+      downloadCsv(
+        `members-report-${Date.now()}.csv`,
+        (users ?? []).map((user: User) => ({
+          id: user.id,
+          firstName: user.firstName,
+          middleName: user.middleName,
+          lastName: user.lastName,
+          username: user.username,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          membershipType: user.membershipType,
+          membershipStatus: user.membershipStatus,
+          position: user.position,
+          leoId: user.leoId,
+          createdAt: user.createdAt,
+        })),
+      )
       return
     }
 
     if (reportId === "events") {
-      const rows = (events ?? []).map((e: Event) => ({
-        id: e.id,
-        title: e.title,
-        category: e.category,
-        status: e.status,
-        date: e.date,
-        time: e.time,
-        location: e.location,
-        attendeesCount: e.attendees?.length ?? 0,
-        createdBy: e.createdBy,
-        createdAt: e.createdAt,
-      }))
-      downloadCsv(`events-report-${Date.now()}.csv`, rows)
+      downloadCsv(
+        `events-report-${Date.now()}.csv`,
+        (events ?? []).map((event: Event) => ({
+          id: event.id,
+          title: event.title,
+          category: event.category,
+          status: event.status,
+          date: event.date,
+          time: event.time,
+          location: event.location,
+          attendeesCount: event.attendees?.length ?? 0,
+          createdBy: event.createdBy,
+          createdAt: event.createdAt,
+        })),
+      )
       return
     }
 
     if (reportId === "donations") {
-      const rows = (donations ?? []).map((d: Donation) => ({
-        id: d.id,
-        txRef: d.txRef,
-        donorName: d.donorName,
-        donorEmail: d.donorEmail,
-        amount: d.amount,
-        currency: d.currency,
-        paymentStatus: d.paymentStatus,
-        fiscalYear: d.fiscalYear,
-        createdAt: d.createdAt,
-      }))
-      downloadCsv(`donations-report-${Date.now()}.csv`, rows)
+      downloadCsv(
+        `donations-report-${Date.now()}.csv`,
+        (donations ?? []).map((donation: Donation) => ({
+          id: donation.id,
+          txRef: donation.txRef,
+          donorName: donation.donorName,
+          donorEmail: donation.donorEmail,
+          amount: donation.amount,
+          currency: donation.currency,
+          paymentStatus: donation.paymentStatus,
+          causeTitle: donation.causeTitle,
+          fiscalYear: donation.fiscalYear,
+          createdAt: donation.createdAt,
+        })),
+      )
       return
     }
 
-    const rows = [
+    downloadCsv(`activity-summary-${Date.now()}.csv`, [
       {
         members: (users ?? []).length,
         events: (events ?? []).length,
@@ -153,73 +136,75 @@ export default function ReportsPage() {
         donationsTotalAmount: donationTotals.amount,
         generatedOn: generatedDate,
       },
-    ]
-    downloadCsv(`activity-summary-${Date.now()}.csv`, rows)
+    ])
+  }
+
+  const downloadAll = () => {
+    handleDownload("members")
+    handleDownload("events")
+    handleDownload("donations")
+    handleDownload("summary")
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Reports</h1>
-          <p className="text-gray-600">Generate and download club reports</p>
-        </div>
-        <Button className="bg-leo-primary hover:bg-leo-primary-dark text-white">
-          <FileText className="h-4 w-4 mr-2" />
-          Generate New Report
-        </Button>
-      </div>
+      <AdminPageHeader
+        title="Reports"
+        description="Export club data as CSV files for leadership and record-keeping."
+        actions={
+          <Button className="bg-leo-primary text-white hover:bg-leo-primary-dark" onClick={downloadAll} disabled={isBusy}>
+            <Download className="h-4 w-4" />
+            Download all
+          </Button>
+        }
+      />
 
-      <div className="grid sm:grid-cols-2 gap-6">
+      <div className="grid gap-6 sm:grid-cols-2">
         {reports.map((report) => {
           const Icon = report.icon
           return (
-            <Card key={report.id}>
+            <Card key={report.id} className="rounded-md border-border/60 shadow-sm">
               <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className={`p-3 rounded-lg ${report.color}`}>
-                    <Icon className="h-6 w-6" />
+                <div className="mb-4 flex items-start justify-between">
+                  <div className={`rounded-md p-3 ${report.color}`}>
+                    <Icon className="h-5 w-5" />
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDownload(report.id)}
-                    disabled={usersLoading || eventsLoading || donationsLoading}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
+                  <Button variant="outline" size="sm" onClick={() => handleDownload(report.id)} disabled={isBusy}>
+                    <Download className="h-4 w-4" />
                     Download
                   </Button>
                 </div>
-                <h3 className="font-semibold text-lg mb-2">{report.title}</h3>
-                <p className="text-gray-600 text-sm mb-4">{report.description}</p>
-                <p className="text-xs text-gray-500">{report.date}</p>
+                <h3 className="mb-1 text-lg font-semibold">{report.title}</h3>
+                <p className="mb-3 text-sm text-muted-foreground">{report.description}</p>
+                <p className="text-xs text-muted-foreground">Generated on {generatedDate}</p>
               </CardContent>
             </Card>
           )
         })}
       </div>
 
-      <Card>
+      <Card className="rounded-md border-border/60 shadow-sm">
         <CardHeader>
-          <CardTitle>Available Report Types</CardTitle>
+          <CardTitle className="text-lg font-semibold">What’s included</CardTitle>
+          <CardDescription>Each download contains the latest data from Firestore.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            <div className="p-4 border rounded-lg">
-              <h4 className="font-semibold mb-1">Membership Report</h4>
-              <p className="text-sm text-gray-600">Includes member details, growth trends, and demographics</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-md border border-border/60 p-4">
+              <h4 className="font-semibold">Membership</h4>
+              <p className="mt-1 text-sm text-muted-foreground">Names, contact details, roles, Leo IDs, and status.</p>
             </div>
-            <div className="p-4 border rounded-lg">
-              <h4 className="font-semibold mb-1">Financial Report</h4>
-              <p className="text-sm text-gray-600">Complete financial overview with donations and expenses</p>
+            <div className="rounded-md border border-border/60 p-4">
+              <h4 className="font-semibold">Donations</h4>
+              <p className="mt-1 text-sm text-muted-foreground">Donor info, amounts, causes, and payment status.</p>
             </div>
-            <div className="p-4 border rounded-lg">
-              <h4 className="font-semibold mb-1">Event Report</h4>
-              <p className="text-sm text-gray-600">Event participation, attendance tracking, and impact analysis</p>
+            <div className="rounded-md border border-border/60 p-4">
+              <h4 className="font-semibold">Events</h4>
+              <p className="mt-1 text-sm text-muted-foreground">Titles, dates, categories, locations, and attendance counts.</p>
             </div>
-            <div className="p-4 border rounded-lg">
-              <h4 className="font-semibold mb-1">Custom Report</h4>
-              <p className="text-sm text-gray-600">Build custom reports with specific data points and date ranges</p>
+            <div className="rounded-md border border-border/60 p-4">
+              <h4 className="font-semibold">Summary</h4>
+              <p className="mt-1 text-sm text-muted-foreground">A one-row snapshot of members, events, and donations.</p>
             </div>
           </div>
         </CardContent>

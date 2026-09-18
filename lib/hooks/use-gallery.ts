@@ -1,7 +1,7 @@
 "use client"
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { createGalleryImage, deleteGalleryImage, getGalleryImages, updateGalleryImage } from "@/lib/firebase/firestore"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { getGalleryImages, createGalleryImage, updateGalleryImage, deleteGalleryImage } from "@/lib/firebase/firestore"
 import type { GalleryImage } from "@/lib/types"
 
 export function useGalleryImages(eventId?: string) {
@@ -26,7 +26,8 @@ export function useUpdateGalleryImage() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ imageId, data }: { imageId: string; data: Partial<GalleryImage> }) => updateGalleryImage(imageId, data),
+    mutationFn: ({ imageId, data }: { imageId: string; data: Partial<GalleryImage> }) =>
+      updateGalleryImage(imageId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["gallery"] })
     },

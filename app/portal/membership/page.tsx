@@ -1,117 +1,194 @@
 "use client"
 
-import { useAuth } from "@/lib/hooks/use-auth"
+import { useMemo, useState } from "react"
+import Link from "next/link"
+import { Award, CheckCircle, CreditCard, GraduationCap, Loader2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Award, TrendingUp, CheckCircle } from "lucide-react"
-import { Progress } from "@/components/ui/progress"
+import { Button } from "@/components/ui/button"
+import { useAuth } from "@/lib/hooks/use-auth"
+import { useMembershipFees } from "@/lib/hooks/use-membership-fees"
+import { usePlatformSettings } from "@/lib/hooks/use-settings"
+import { initiatePayment } from "@/lib/paychangu/client"
+import { useToast } from "@/hooks/use-toast"
+import { amountForPeriod, billingFromSettings, coverageFor, memberPaidInRange, periodLabel, toIsoDate } from "@/lib/membership/billing"
+import type { FeePeriod } from "@/lib/types"
+import { formatDate, formatMoney } from "@/lib/utils/format"
+import { portalCanvasMuted, portalCanvasTitle } from "@/components/portal/styles"
+
+const periods: FeePeriod[] = ["monthly", "semester", "yearly"]
 
 export default function MembershipPage() {
   const { user } = useAuth()
+  const { toast } = useToast()
+  const { data: settings } = usePlatformSettings()
+  const { data: fees = [] } = useMembershipFees(user?.id)
+  const billing = billingFromSettings(settings)
+  const [paying, setPaying] = useState<FeePeriod | null>(null)
 
-  const membershipStats = {
-    joined: "January 2024",
-    eventsAttended: 12,
-    totalEvents: 18,
-    volunteerHours: 45,
-    projectsCompleted: 8,
+  const now = new Date()
+  const paidByPeriod = useMemo(() => {
+    return Object.fromEntries(
+      periods.map((period) => {
+        const range = coverageFor(period, now, billing)
+        return [period, user ? memberPaidInRange(fees, user.id, range.start, range.end) : false]
+      }),
+    ) as Record<FeePeriod, boolean>
+  }, [billing, fees, now, user])
+
+  const handlePay = async (period: FeePeriod) => {
+    if (!user) return
+    const amount = amountForPeriod(period, billing)
+    const range = coverageFor(period, now, billing)
+    setPaying(period)
+    try {
+      const result = await initiatePayment({
+        amount,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        currency: "MWK",
+        purpose: "membership",
+        userId: user.id,
+        period,
+        coverageStart: toIsoDate(range.start),
+        coverageEnd: toIsoDate(range.end),
+        dueDate: toIsoDate(range.end),
+        returnUrl: `${window.location.origin}/portal/membership/return`,
+        customization: {
+          title: `Leo Club ${periodLabel(period)} membership`,
+          description: `${periodLabel(period)} fee of ${formatMoney(amount)}`,
+        },
+      })
+      if (result.success && result.checkoutUrl) {
+        window.location.href = result.checkoutUrl
+        return
+      }
+      toast({
+        title: "Payment error",
+        description: result.error || "Could not start payment.",
+        variant: "destructive",
+      })
+    } catch {
+      toast({ title: "Payment error", description: "Try again in a moment.", variant: "destructive" })
+    } finally {
+      setPaying(null)
+    }
   }
 
-  const benefits = [
-    "Access to all club events and activities",
-    "Leadership development workshops",
-    "Networking opportunities",
-    "Community service certificates",
-    "Voting rights in club decisions",
-    "Mentorship programs",
-  ]
-
   return (
-    <div className="px-4 py-6 space-y-6">
-      {/* Membership Card */}
-      <Card className="bg-gradient-to-br from-[#F59E0B] to-[#DC2626] text-white border-none shadow-lg overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
+    <div className="space-y-6 px-4 py-6 lg:px-6 lg:py-8">
+      {user?.membershipStatus === "pending" ? (
+        <Card className="border-none bg-amber-50 shadow-sm">
+          <CardContent className="p-5">
+            <h3 className="font-semibold text-amber-950">Waiting for admin approval</h3>
+            <p className="mt-1 text-sm text-amber-900">
+              Your joining request is with club leadership. You can still complete training while you wait.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {user?.membershipType === "prospective-leo" ? (
+        <Card className="border-none bg-white shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-3">
+              <div className="rounded-md bg-amber-100 p-2 text-amber-700">
+                <GraduationCap className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-neutral-900">New member training</h3>
+                <p className="mt-1 text-sm text-neutral-600">
+                  This is the only training program for new members. Pass each module quiz with at least 50% to become a
+                  full Leo.
+                </p>
+                <Button asChild className="mt-4 rounded-md bg-leo-primary text-white">
+                  <Link href="/portal/training">Continue training</Link>
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <Card className="overflow-hidden border-none bg-gradient-to-br from-[#F59E0B] to-[#DC2626] text-white shadow-lg">
         <CardContent className="relative p-6">
-          <div className="flex items-center justify-between mb-4">
-            <Badge className="bg-white text-[#DC2626] border-none">Active Member</Badge>
+          <div className="mb-4 flex items-center justify-between">
+            <Badge className="border-none bg-white text-[#DC2626]">
+              {user?.membershipType === "leo" ? "Leo member" : "Prospective member"}
+            </Badge>
             <Award className="h-8 w-8" />
           </div>
-          <h2 className="text-2xl font-bold mb-1">
+          <h2 className="mb-1 text-2xl font-bold">
             {user?.firstName} {user?.lastName}
           </h2>
-          <p className="opacity-90 mb-4">ID: {user?.leoId || "Leo-124537"}</p>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="opacity-75">Member Since</p>
-              <p className="font-semibold">{membershipStats.joined}</p>
-            </div>
-            <div>
-              <p className="opacity-75">Position</p>
-              <p className="font-semibold">{user?.position || "Membership Chair"}</p>
-            </div>
-          </div>
+          <p className="mb-4 opacity-90">ID: {user?.leoId}</p>
+          <p className="text-sm opacity-90">Status: {user?.membershipStatus ?? "active"}</p>
         </CardContent>
       </Card>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card className="bg-white/90 border-none">
-          <CardContent className="p-4 text-center">
-            <Calendar className="h-8 w-8 mx-auto mb-2 text-[#F59E0B]" />
-            <p className="text-2xl font-bold">{membershipStats.eventsAttended}</p>
-            <p className="text-sm text-gray-600">Events Attended</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white/90 border-none">
-          <CardContent className="p-4 text-center">
-            <TrendingUp className="h-8 w-8 mx-auto mb-2 text-[#DC2626]" />
-            <p className="text-2xl font-bold">{membershipStats.volunteerHours}</p>
-            <p className="text-sm text-gray-600">Volunteer Hours</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Event Participation */}
-      <Card className="bg-white/90 border-none">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold">Event Participation</h3>
-            <span className="text-sm text-gray-600">
-              {membershipStats.eventsAttended}/{membershipStats.totalEvents}
-            </span>
-          </div>
-          <Progress value={(membershipStats.eventsAttended / membershipStats.totalEvents) * 100} className="h-2" />
-          <p className="text-xs text-gray-600 mt-2">
-            {Math.round((membershipStats.eventsAttended / membershipStats.totalEvents) * 100)}% participation rate
+      <section className="space-y-3">
+        <div>
+          <h2 className={`text-xl font-semibold ${portalCanvasTitle}`}>Pay membership fee</h2>
+          <p className={`mt-1 text-sm ${portalCanvasMuted}`}>
+            Choose monthly, semester, or yearly. Semester dates are set by admin
+            {billing.semesterStart ? ` (${formatDate(billing.semesterStart)} – ${formatDate(billing.semesterEnd)})` : ""}.
           </p>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {periods.map((period) => {
+            const paid = paidByPeriod[period]
+            const amount = amountForPeriod(period, billing)
+            return (
+              <Card key={period} className="border-none bg-white shadow-sm">
+                <CardContent className="p-4">
+                  <p className="text-sm text-neutral-500">{periodLabel(period)}</p>
+                  <p className="mt-1 text-2xl font-semibold text-neutral-900">{formatMoney(amount)}</p>
+                  {paid ? (
+                    <p className="mt-3 flex items-center gap-1 text-sm font-medium text-emerald-700">
+                      <CheckCircle className="h-4 w-4" />
+                      Paid for this period
+                    </p>
+                  ) : (
+                    <Button
+                      className="mt-3 w-full rounded-md bg-leo-primary text-white"
+                      onClick={() => handlePay(period)}
+                      disabled={paying !== null}
+                    >
+                      {paying === period ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+                      Pay now
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      </section>
 
-      {/* Membership Benefits */}
-      <Card className="bg-white/90 border-none">
+      <Card className="border-none bg-white shadow-sm">
         <CardContent className="p-6">
-          <h3 className="font-semibold mb-4">Your Membership Benefits</h3>
-          <ul className="space-y-3">
-            {benefits.map((benefit, index) => (
-              <li key={index} className="flex items-start gap-3">
-                <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                <span className="text-sm text-gray-700">{benefit}</span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-
-      {/* Renewal Info */}
-      <Card className="bg-gradient-to-br from-[#92400E] to-[#78350F] text-white border-none">
-        <CardContent className="p-6">
-          <h3 className="font-semibold mb-2">Membership Renewal</h3>
-          <p className="text-sm opacity-90 mb-4">Your membership is valid until December 31, 2025</p>
-          <div className="bg-white/20 rounded-lg p-3 text-sm">
-            <p className="mb-1">Annual Fee: MWK 10,000</p>
-            <p className="text-xs opacity-75">Auto-renewal enabled</p>
-          </div>
+          <h3 className="font-semibold">Payment history</h3>
+          {fees.length === 0 ? (
+            <p className="mt-2 text-sm text-neutral-600">No payments yet.</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {fees.map((fee) => (
+                <li key={fee.id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                  <div>
+                    <p className="font-medium">
+                      {periodLabel(fee.period)} · {formatMoney(fee.amount)}
+                    </p>
+                    <p className="text-xs text-neutral-500">
+                      {fee.method === "offline" ? "Recorded by admin" : "Online"}
+                      {fee.paymentDate ? ` · ${formatDate(fee.paymentDate)}` : ""}
+                    </p>
+                  </div>
+                  <Badge variant={fee.status === "paid" ? "default" : "secondary"}>{fee.status}</Badge>
+                </li>
+              ))}
+            </ul>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -23,8 +23,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { useCreateEvent, useDeleteEvent, useEvents, useUpdateEvent } from "@/lib/hooks/use-events"
 import type { Event } from "@/lib/types"
-import { Plus, Calendar, Pencil, Trash2 } from "lucide-react"
+import { Plus, Calendar, Pencil, Trash2, Users } from "lucide-react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
+import { AdminPageHeader } from "@/components/admin/page-header"
+import { AdminStatCard } from "@/components/admin/stat-card"
+import { AdminEmptyState } from "@/components/admin/empty-state"
+import { formatDate } from "@/lib/utils/format"
 
 export default function EventsPage() {
   const { firebaseUser } = useAuth()
@@ -159,80 +163,28 @@ export default function EventsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Events Management</h1>
-          <p className="text-gray-600">Manage and track all club events</p>
-        </div>
-        <Button className="bg-leo-primary hover:bg-leo-primary-dark text-white" onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Event
-        </Button>
-      </div>
+      <AdminPageHeader
+        title="Events"
+        description="Create, update, and track club events and attendance."
+        actions={
+          <Button className="bg-leo-primary text-white hover:bg-leo-primary-dark" onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            Create event
+          </Button>
+        }
+      />
 
-      {/* Stats Cards */}
-      <div className="grid sm:grid-cols-4 gap-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-lg bg-blue-100">
-                <Calendar className="h-6 w-6 text-blue-600" />
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Total Events</p>
-              <p className="text-2xl font-bold">{isLoading ? "..." : stats.total}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-lg bg-green-100">
-                <Calendar className="h-6 w-6 text-green-600" />
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Upcoming</p>
-              <p className="text-2xl font-bold">{isLoading ? "..." : stats.upcoming}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-lg bg-purple-100">
-                <Calendar className="h-6 w-6 text-purple-600" />
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Completed</p>
-              <p className="text-2xl font-bold">{isLoading ? "..." : stats.completed}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-lg bg-orange-100">
-                <Calendar className="h-6 w-6 text-orange-600" />
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Avg Attendance</p>
-              <p className="text-2xl font-bold">{isLoading ? "..." : stats.avgAttendance}</p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminStatCard title="Total events" value={stats.total} icon={Calendar} accent="blue" loading={isLoading} />
+        <AdminStatCard title="Upcoming" value={stats.upcoming} icon={Calendar} accent="green" loading={isLoading} />
+        <AdminStatCard title="Completed" value={stats.completed} icon={Calendar} accent="purple" loading={isLoading} />
+        <AdminStatCard title="Avg. attendance" value={stats.avgAttendance} icon={Users} accent="orange" loading={isLoading} />
       </div>
 
       {/* Category Distribution */}
-      <Card>
+      <Card className="rounded-md border-border/60 shadow-sm">
         <CardHeader>
-          <CardTitle>Events by Category</CardTitle>
+          <CardTitle className="text-lg font-semibold">Events by category</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -240,8 +192,8 @@ export default function EventsPage() {
               <Skeleton className="h-[300px] w-full" />
               <Skeleton className="h-[300px] w-full" />
             </div>
-          ) : categoryData.length === 0 ? (
-            <p className="text-sm text-gray-600">No events found yet.</p>
+            ) : categoryData.length === 0 ? (
+              <AdminEmptyState icon={Calendar} title="No events yet" description="Create your first event to see category analytics." />
           ) : (
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -259,12 +211,12 @@ export default function EventsPage() {
       </Card>
 
       {/* Events List */}
-      <Card>
+      <Card className="rounded-md border-border/60 shadow-sm">
         <CardHeader>
-          <CardTitle>All Events</CardTitle>
+          <CardTitle className="text-lg font-semibold">All events</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {isLoading ? (
               <>
                 <Skeleton className="h-20 w-full" />
@@ -272,16 +224,19 @@ export default function EventsPage() {
                 <Skeleton className="h-20 w-full" />
               </>
             ) : (events ?? []).length === 0 ? (
-              <p className="text-sm text-gray-600">No events found. Create your first event.</p>
+              <AdminEmptyState icon={Calendar} title="No events found" description="Create your first event to get started." />
             ) : (
-              (events ?? []).map((event) => (
-                <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <h3 className="font-semibold mb-1">{event.title}</h3>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600">
-                      <span>{event.date}</span>
+              [...(events ?? [])]
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                .map((event) => (
+                <div key={event.id} className="flex flex-col gap-3 rounded-md border border-border/60 bg-[#FBF9F6] p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold">{event.title}</h3>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                      <span>{formatDate(event.date)}{event.time ? ` · ${event.time}` : ""}</span>
                       <Badge variant="outline">{categoryMeta[event.category].name}</Badge>
                       <span>{event.attendees?.length ?? 0} attendees</span>
+                      <span className="truncate">{event.location}</span>
                     </div>
                   </div>
 
@@ -289,10 +244,10 @@ export default function EventsPage() {
                     <Badge
                       className={
                         event.status === "upcoming"
-                          ? "bg-blue-500"
+                          ? "border-transparent bg-sky-500 text-white"
                           : event.status === "ongoing"
-                            ? "bg-amber-500"
-                            : "bg-green-500"
+                            ? "border-transparent bg-amber-500 text-white"
+                            : "border-transparent bg-emerald-500 text-white"
                       }
                     >
                       {event.status}

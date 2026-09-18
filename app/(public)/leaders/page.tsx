@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Mail, Phone } from "lucide-react"
+import { media } from "@/lib/media"
 
 export default function LeadersPage() {
   const leaders = [
@@ -7,7 +8,7 @@ export default function LeadersPage() {
       name: "Leo Mzota",
       position: "Membership Chair",
       bio: "Passionate about youth empowerment and community development. Leading membership growth initiatives.",
-      image: "/professional-male-headshot.png",
+      image: media.people.male,
       email: "leo.mzota@mubasleoclub.org",
       phone: "+265 981 81 93 89",
     },
@@ -15,21 +16,21 @@ export default function LeadersPage() {
       name: "Jane Banda",
       position: "President",
       bio: "Dedicated leader with a vision for expanding our community impact and fostering youth leadership.",
-      image: "/professional-headshot-female.png",
+      image: media.people.female,
       email: "jane.banda@mubasleoclub.org",
     },
     {
       name: "John Phiri",
       position: "Vice President",
       bio: "Committed to organizing impactful service projects and building strong community partnerships.",
-      image: "/professional-headshot-male-2.png",
+      image: media.people.male2,
       email: "john.phiri@mubasleoclub.org",
     },
     {
       name: "Grace Chirwa",
       position: "Secretary",
       bio: "Ensuring smooth operations and effective communication within the club and with external stakeholders.",
-      image: "/professional-headshot-female-2.png",
+      image: media.people.female2,
       email: "grace.chirwa@mubasleoclub.org",
     },
   ]

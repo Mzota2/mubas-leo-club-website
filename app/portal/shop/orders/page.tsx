@@ -4,6 +4,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Package, Clock, CheckCircle, XCircle } from "lucide-react"
+import { PortalPageHeader } from "@/components/portal/page-header"
+import { portalTabsListClass, portalTabsTriggerClass } from "@/components/portal/styles"
 
 export default function OrdersPage() {
   // Mock order data
@@ -67,20 +69,16 @@ export default function OrdersPage() {
   const completedOrders = orders.filter((o) => o.status === "delivered" || o.status === "cancelled")
 
   return (
-    <div className="px-4 py-6 space-y-6">
-      {/* Header */}
-      <div className="text-white">
-        <h1 className="text-2xl font-bold mb-2">My Orders</h1>
-        <p className="text-sm opacity-90">{orders.length} total orders</p>
-      </div>
+    <div className="space-y-6 px-4 py-6 lg:px-6 lg:py-8">
+      <PortalPageHeader title="My orders" description={`${orders.length} total orders`} />
 
       {/* Orders Tabs */}
       <Tabs defaultValue="active" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 bg-white/10">
-          <TabsTrigger value="active" className="data-[state=active]:bg-white data-[state=active]:text-[#F59E0B]">
+        <TabsList className={portalTabsListClass}>
+          <TabsTrigger value="active" className={portalTabsTriggerClass}>
             Active ({activeOrders.length})
           </TabsTrigger>
-          <TabsTrigger value="completed" className="data-[state=active]:bg-white data-[state=active]:text-[#F59E0B]">
+          <TabsTrigger value="completed" className={portalTabsTriggerClass}>
             Completed ({completedOrders.length})
           </TabsTrigger>
         </TabsList>

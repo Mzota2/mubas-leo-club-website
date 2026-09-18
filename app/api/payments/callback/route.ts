@@ -6,15 +6,25 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
 
-    // Update donation payment status in Firestore
     if (body.status === "success" && body.tx_ref) {
       const donationsQuery = query(collection(db, "donations"), where("txRef", "==", body.tx_ref))
       const donationsSnapshot = await getDocs(donationsQuery)
-
       await Promise.all(
         donationsSnapshot.docs.map((donationDoc) =>
           updateDoc(donationDoc.ref, {
             paymentStatus: "completed",
+          }),
+        ),
+      )
+
+      const feesQuery = query(collection(db, "membershipFees"), where("txRef", "==", body.tx_ref))
+      const feesSnapshot = await getDocs(feesQuery)
+      const paidAt = new Date().toISOString()
+      await Promise.all(
+        feesSnapshot.docs.map((feeDoc) =>
+          updateDoc(feeDoc.ref, {
+            status: "paid",
+            paymentDate: paidAt,
           }),
         ),
       )

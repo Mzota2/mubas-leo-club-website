@@ -20,17 +20,16 @@ export async function registerWithEmail(
     const userCredential = await createUserWithEmailAndPassword(auth, email, password)
     const firebaseUser = userCredential.user
 
-    // Update Firebase Auth profile
     await updateProfile(firebaseUser, {
       displayName: `${userData.firstName} ${userData.lastName}`,
     })
 
-    // Create user document in Firestore
     await createUser(firebaseUser.uid, {
       ...userData,
       email,
       role: "member",
-      membershipStatus: "active",
+      membershipType: userData.membershipType || "prospective-leo",
+      membershipStatus: userData.membershipStatus || "pending",
     })
 
     return { success: true, user: firebaseUser }

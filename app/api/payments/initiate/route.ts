@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server"
-import { createDonation } from "@/lib/firebase/firestore"
+import { createDonation, createMembershipFee } from "@/lib/firebase/firestore"
 
 function getFiscalYear(date = new Date()) {
   const year = date.getFullYear()
   const month = date.getMonth() + 1
-  // Fiscal year starts in July (7)
   return month >= 7 ? `${year}/${year + 1}` : `${year - 1}/${year}`
 }
 
@@ -17,9 +16,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "NEXT_PUBLIC_APP_URL is not configured" }, { status: 500 })
     }
 
+    const paychanguKey = process.env.PAYCHANGU_SECRET_KEY
+    if (!paychanguKey) {
+      return NextResponse.json({ success: false, error: "PAYCHANGU_SECRET_KEY is not configured" }, { status: 500 })
+    }
+
     const txRef = body.txRef || `LEO-${Date.now()}`
 
-    // If this is a donation, create a pending donation record tied to the txRef.
     if (body.purpose === "donation") {
       const donorName = `${body.firstName ?? "Donor"}${body.lastName ? ` ${body.lastName}` : ""}`.trim()
       await createDonation({
@@ -28,6 +31,8 @@ export async function POST(request: Request) {
         donorName,
         donorEmail: body.email,
         message: body.message,
+        causeId: body.causeId,
+        causeTitle: body.causeTitle,
         txRef,
         currency: body.currency || "MWK",
         paymentStatus: "pending",
@@ -35,13 +40,39 @@ export async function POST(request: Request) {
       })
     }
 
-    // Integrate with PayChangu API
+    if (body.purpose === "membership") {
+      if (!body.userId) {
+        return NextResponse.json({ success: false, error: "A signed-in member is required" }, { status: 400 })
+      }
+      const now = new Date().toISOString()
+      await createMembershipFee({
+        userId: body.userId,
+        amount: Number(body.amount),
+        period: body.period || "yearly",
+        coverageStart: body.coverageStart || now,
+        coverageEnd: body.coverageEnd || now,
+        dueDate: body.dueDate || body.coverageEnd || now,
+        status: "pending",
+        method: "paychangu",
+        txRef,
+        createdAt: now,
+      })
+    }
+
+    const returnUrl =
+      body.returnUrl ||
+      (body.purpose === "donation"
+        ? `${appUrl}/donate/return?txRef=${txRef}`
+        : body.purpose === "membership"
+          ? `${appUrl}/portal/membership/return?txRef=${txRef}`
+          : `${appUrl}/portal/shop/orders`)
+
     const payChanguResponse = await fetch("https://api.paychangu.com/payment", {
       method: "POST",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.PAYCHANGU_SECRET_KEY}`,
+        Authorization: `Bearer ${paychanguKey}`,
       },
       body: JSON.stringify({
         amount: body.amount,
@@ -50,18 +81,27 @@ export async function POST(request: Request) {
         first_name: body.firstName,
         last_name: body.lastName,
         callback_url: body.callbackUrl || `${appUrl}/api/payments/callback`,
-        return_url:
-          body.returnUrl || (body.purpose === "donation" ? `${appUrl}/donate/return?txRef=${txRef}` : `${appUrl}/portal/shop/orders`),
+        return_url: returnUrl,
         tx_ref: txRef,
         customization: body.customization,
       }),
     })
 
-    const data = await payChanguResponse.json()
+    const data = await payChanguResponse.json().catch(() => null)
+    if (!payChanguResponse.ok) {
+      const message =
+        (data && (data.message || data.error || data?.data?.message || data?.data?.error)) || "PayChangu request failed"
+      return NextResponse.json({ success: false, error: message }, { status: 400 })
+    }
+
+    const checkoutUrl = data?.checkoutUrl || data?.data?.checkout_url || data?.data?.link || data?.link || data?.url
+    if (!checkoutUrl || typeof checkoutUrl !== "string") {
+      return NextResponse.json({ success: false, error: "Missing checkout URL from PayChangu" }, { status: 500 })
+    }
 
     return NextResponse.json({
       success: true,
-      checkoutUrl: data.link,
+      checkoutUrl,
       transactionId: txRef,
     })
   } catch (error) {

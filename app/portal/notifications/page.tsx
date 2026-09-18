@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Bell, Cake, Calendar, Megaphone } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { Skeleton } from "@/components/ui/skeleton"
+import { PortalPageHeader } from "@/components/portal/page-header"
+import { portalTabsListClass, portalTabsTriggerClass } from "@/components/portal/styles"
 
 export default function NotificationsPage() {
   const { data: notifications, isLoading } = useNotifications()
@@ -29,22 +31,23 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="px-4 py-6 space-y-6">
-      {/* Header */}
-      <div className="text-white">
-        <h1 className="text-2xl font-bold mb-2">Notifications</h1>
-        {unreadNotifications && unreadNotifications.length > 0 && (
-          <p className="text-sm opacity-90">{unreadNotifications.length} unread notifications</p>
-        )}
-      </div>
+    <div className="space-y-6 px-4 py-6 lg:px-6 lg:py-8">
+      <PortalPageHeader
+        title="Notifications"
+        description={
+          unreadNotifications && unreadNotifications.length > 0
+            ? `${unreadNotifications.length} unread`
+            : "Stay up to date with club activity"
+        }
+      />
 
       {/* Notifications Tabs */}
       <Tabs defaultValue="unread" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 bg-white/10">
-          <TabsTrigger value="unread" className="data-[state=active]:bg-white data-[state=active]:text-[#F59E0B]">
+        <TabsList className={portalTabsListClass}>
+          <TabsTrigger value="unread" className={portalTabsTriggerClass}>
             Unread {unreadNotifications && `(${unreadNotifications.length})`}
           </TabsTrigger>
-          <TabsTrigger value="all" className="data-[state=active]:bg-white data-[state=active]:text-[#F59E0B]">
+          <TabsTrigger value="all" className={portalTabsTriggerClass}>
             All
           </TabsTrigger>
         </TabsList>

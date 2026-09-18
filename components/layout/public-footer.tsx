@@ -65,6 +65,11 @@ export function PublicFooter() {
                 </Link>
               </li>
               <li>
+                <Link href="/training" className="hover:text-leo-primary transition-colors inline-block">
+                  Training program
+                </Link>
+              </li>
+              <li>
                 <Link href="/membership" className="hover:text-leo-primary transition-colors inline-block">
                   Become a Member
                 </Link>

@@ -8,9 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { EventCard } from "@/components/common/event-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Search } from "lucide-react"
+import { portalChipClass, portalTabsListClass, portalTabsTriggerClass } from "@/components/portal/styles"
 
 export default function PortalEventsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
+  const [query, setQuery] = useState("")
   const { data: events, isLoading } = useEvents()
 
   const categories = [
@@ -23,19 +25,29 @@ export default function PortalEventsPage() {
     { id: "social", label: "Social" },
   ]
 
-  const filteredEvents = selectedCategory === "all" ? events : events?.filter((e) => e.category === selectedCategory)
+  const q = query.trim().toLowerCase()
+  const filteredEvents = (selectedCategory === "all" ? events : events?.filter((e) => e.category === selectedCategory))?.filter(
+    (event) =>
+      !q ||
+      event.title.toLowerCase().includes(q) ||
+      event.description.toLowerCase().includes(q) ||
+      event.location.toLowerCase().includes(q) ||
+      event.category.toLowerCase().includes(q),
+  )
 
   const upcomingEvents = filteredEvents?.filter((e) => e.status === "upcoming")
   const pastEvents = filteredEvents?.filter((e) => e.status === "completed")
 
   return (
-    <div className="px-4 py-6 space-y-6">
+    <div className="px-4 py-6 space-y-6 lg:px-6 lg:py-8">
       {/* Search Bar */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
         <Input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
           placeholder="Search events..."
-          className="pl-10 bg-white/90 backdrop-blur-sm border-none rounded-xl h-12"
+          className="h-12 rounded-md border-none bg-white pl-10 text-neutral-900 shadow-sm placeholder:text-neutral-500"
         />
       </div>
 
@@ -45,9 +57,7 @@ export default function PortalEventsPage() {
           <button
             key={category.id}
             onClick={() => setSelectedCategory(category.id)}
-            className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium transition-colors ${
-              selectedCategory === category.id ? "bg-white text-[#F59E0B]" : "bg-white/10 text-white hover:bg-white/20"
-            }`}
+            className={portalChipClass(selectedCategory === category.id)}
           >
             {category.label}
           </button>
@@ -56,16 +66,16 @@ export default function PortalEventsPage() {
 
       {/* Events Tabs */}
       <Tabs defaultValue="upcoming" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 bg-white/10">
-          <TabsTrigger value="upcoming" className="data-[state=active]:bg-white data-[state=active]:text-[#F59E0B]">
+        <TabsList className={portalTabsListClass}>
+          <TabsTrigger value="upcoming" className={portalTabsTriggerClass}>
             Upcoming
           </TabsTrigger>
-          <TabsTrigger value="past" className="data-[state=active]:bg-white data-[state=active]:text-[#F59E0B]">
+          <TabsTrigger value="past" className={portalTabsTriggerClass}>
             Past
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="upcoming" className="space-y-4 mt-6">
+        <TabsContent value="upcoming" className="space-y-4 mt-6 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
           {isLoading ? (
             <>
               {[1, 2, 3].map((i) => (
@@ -90,7 +100,7 @@ export default function PortalEventsPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="past" className="space-y-4 mt-6">
+        <TabsContent value="past" className="space-y-4 mt-6 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
           {isLoading ? (
             <>
               {[1, 2].map((i) => (
