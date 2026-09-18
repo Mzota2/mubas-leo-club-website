@@ -10,8 +10,9 @@ service cloud.firestore {
     }
 
     function isAdminOrLeader() {
-      return signedIn() &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'leader'];
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'leader'];
     }
 
     match /users/{userId} {
@@ -22,15 +23,20 @@ service cloud.firestore {
         && request.resource.data.email is string
         && request.resource.data.firstName is string
         && request.resource.data.lastName is string
-        && request.resource.data.username is string;
-      allow read: if isOwner(userId) || isAdminOrLeader();
+        && request.resource.data.username is string
+        && request.resource.data.leoId is string;
 
-      allow update: if isOwner(userId) &&
-        request.resource.data.role == resource.data.role &&
-        request.resource.data.membershipStatus == resource.data.membershipStatus &&
-        request.resource.data.email == resource.data.email;
+      allow get: if isOwner(userId) || isAdminOrLeader();
+      allow list: if isAdminOrLeader();
 
       allow update: if isAdminOrLeader();
+
+      allow update: if isOwner(userId)
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.role == 'member'
+        && (!('leoId' in resource.data) || request.resource.data.leoId == resource.data.leoId)
+        && (!('membershipType' in resource.data) || request.resource.data.membershipType == resource.data.membershipType)
+        && (!('membershipStatus' in resource.data) || request.resource.data.membershipStatus == resource.data.membershipStatus);
 
       allow update: if !signedIn()
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(['joiningFeePaid', 'joiningFeePaidAt', 'updatedAt'])

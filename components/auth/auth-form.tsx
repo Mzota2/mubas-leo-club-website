@@ -15,7 +15,7 @@ import {
   signInWithPopup,
   updateProfile,
 } from "firebase/auth"
-import { doc, getDoc, setDoc } from "firebase/firestore"
+import { doc, getDoc } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase/config"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -34,6 +34,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { membershipFromJoinIntent, postAuthPath } from "@/lib/membership/join"
 import { getUser } from "@/lib/firebase/firestore"
+import { generateLeoId } from "@/lib/utils/leo-id"
 import type { JoinIntent } from "@/lib/types"
 
 function GoogleIcon({ className }: { className?: string }) {
@@ -217,6 +218,7 @@ function AuthFormInner({ mode }: AuthFormProps) {
       const provider = new GoogleAuthProvider()
       const result = await signInWithPopup(auth, provider)
       const user = result.user
+      await user.getIdToken()
 
       const display = user.displayName || ""
       const [firstName, ...rest] = display.split(" ").filter(Boolean)
@@ -289,22 +291,23 @@ function AuthFormInner({ mode }: AuthFormProps) {
     setError("")
 
     try {
+      await auth.currentUser?.getIdToken()
       const existing = await getDoc(doc(db, "users", googleUid))
+      const membership = membershipFromJoinIntent(data.joinIntent)
       if (existing.exists()) {
-        await setDoc(
-          doc(db, "users", googleUid),
-          {
-            firstName: data.firstName,
-            lastName: data.lastName,
-            username: data.username,
-            phone: data.phone,
-            dateOfBirth: data.dateOfBirth,
-            email: googleEmail,
-            profileImage: googleProfileImage,
-            updatedAt: new Date().toISOString(),
-          },
-          { merge: true },
-        )
+        const current = existing.data()
+        const { updateUser } = await import("@/lib/firebase/firestore")
+        await updateUser(googleUid, {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          username: data.username,
+          phone: data.phone,
+          dateOfBirth: data.dateOfBirth,
+          email: googleEmail || current.email || "",
+          profileImage: googleProfileImage || current.profileImage || "",
+          ...(!current.leoId ? { leoId: generateLeoId(googleUid) } : {}),
+          ...(!current.membershipStatus || !current.membershipType ? membership : {}),
+        })
       } else {
         const { createUser } = await import("@/lib/firebase/firestore")
         await createUser(googleUid, {
@@ -316,7 +319,7 @@ function AuthFormInner({ mode }: AuthFormProps) {
           dateOfBirth: data.dateOfBirth,
           role: "member",
           profileImage: googleProfileImage,
-          ...membershipFromJoinIntent(data.joinIntent),
+          ...membership,
         })
       }
 
@@ -342,6 +345,7 @@ function AuthFormInner({ mode }: AuthFormProps) {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password)
       const user = userCredential.user
+      await user.getIdToken()
 
       await updateProfile(user, {
         displayName: `${data.firstName} ${data.lastName}`,

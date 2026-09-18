@@ -16,28 +16,40 @@ import {
   increment,
   type QueryConstraint,
 } from "firebase/firestore"
-import { db } from "./config"
+import { auth, db } from "./config"
+import { generateLeoId } from "@/lib/utils/leo-id"
 import type { User, Event, Product, Order, Donation, Notification, Leader, Training, GalleryImage, PlatformSettings, DonationCause, MembershipFee, Meeting, Attendance, TrainingModule, TrainingProgress } from "@/lib/types"
 
 function omitUndefined<T extends Record<string, unknown>>(data: T) {
   return Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined)) as T
 }
-import { generateLeoId } from "@/lib/utils/leo-id"
+
+async function ensureAuthToken() {
+  if (auth.currentUser) {
+    await auth.currentUser.getIdToken()
+  }
+}
 
 // User operations
 export async function createUser(userId: string, userData: Omit<User, "id" | "leoId" | "membershipType"> & { leoId?: string; membershipType?: "leo" | "prospective-leo" }) {
-  // Generate LEO ID if not provided
-  const leoId = userData.leoId || (await generateLeoId())
+  await ensureAuthToken()
+  const leoId = userData.leoId || generateLeoId(userId)
   const membershipType = userData.membershipType || "prospective-leo"
+  const membershipStatus = userData.membershipStatus || "pending"
 
-  await setDoc(doc(db, "users", userId), {
-    ...userData,
-    leoId,
-    membershipType,
-    trainingStatus: userData.trainingStatus ?? "pending",
-    createdAt: Timestamp.now().toDate().toISOString(),
-    updatedAt: Timestamp.now().toDate().toISOString(),
-  })
+  await setDoc(
+    doc(db, "users", userId),
+    omitUndefined({
+      ...userData,
+      role: "member",
+      leoId,
+      membershipType,
+      membershipStatus,
+      trainingStatus: userData.trainingStatus ?? "pending",
+      createdAt: Timestamp.now().toDate().toISOString(),
+      updatedAt: Timestamp.now().toDate().toISOString(),
+    } as Record<string, unknown>),
+  )
 }
 
 export async function getUser(userId: string): Promise<User | null> {
@@ -47,10 +59,14 @@ export async function getUser(userId: string): Promise<User | null> {
 }
 
 export async function updateUser(userId: string, userData: Partial<User>) {
-  await updateDoc(doc(db, "users", userId), {
-    ...userData,
-    updatedAt: Timestamp.now().toDate().toISOString(),
-  })
+  await ensureAuthToken()
+  await updateDoc(
+    doc(db, "users", userId),
+    omitUndefined({
+      ...userData,
+      updatedAt: Timestamp.now().toDate().toISOString(),
+    } as Record<string, unknown>),
+  )
 }
 
 export async function getAllUsers() {
