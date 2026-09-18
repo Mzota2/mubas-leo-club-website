@@ -27,6 +27,7 @@ export default function AdminSettingsPage() {
   const [monthlyFee, setMonthlyFee] = useState("1000")
   const [semesterFee, setSemesterFee] = useState("5000")
   const [yearlyFee, setYearlyFee] = useState("10000")
+  const [joiningFee, setJoiningFee] = useState("5000")
   const [semesterStart, setSemesterStart] = useState("")
   const [semesterEnd, setSemesterEnd] = useState("")
 
@@ -42,6 +43,7 @@ export default function AdminSettingsPage() {
     setMonthlyFee(String(settings.membership?.monthlyFee ?? 1000))
     setSemesterFee(String(settings.membership?.semesterFee ?? 5000))
     setYearlyFee(String(settings.membership?.yearlyFee ?? 10000))
+    setJoiningFee(String(settings.membership?.joiningFee ?? 5000))
     setSemesterStart(settings.membership?.semesterStart ?? "")
     setSemesterEnd(settings.membership?.semesterEnd ?? "")
   }, [settings])
@@ -61,6 +63,7 @@ export default function AdminSettingsPage() {
         monthlyFee: Number(monthlyFee) || 0,
         semesterFee: Number(semesterFee) || 0,
         yearlyFee: Number(yearlyFee) || 0,
+        joiningFee: Number(joiningFee) || 0,
         semesterStart,
         semesterEnd,
       },
@@ -168,6 +171,10 @@ export default function AdminSettingsPage() {
           <div className="space-y-2">
             <Label htmlFor="yearlyFee">Yearly (MWK)</Label>
             <Input id="yearlyFee" type="number" value={yearlyFee} onChange={(event) => setYearlyFee(event.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="joiningFee">Joining fee, once-off (MWK)</Label>
+            <Input id="joiningFee" type="number" value={joiningFee} onChange={(event) => setJoiningFee(event.target.value)} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="semesterStart">Semester start</Label>

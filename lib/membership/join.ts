@@ -8,6 +8,7 @@ export function membershipFromJoinIntent(intent: JoinIntent) {
       membershipStatus: "active" as MembershipStatus,
       trainingStatus: "waived" as const,
       trainingCompletedAt: new Date().toISOString(),
+      joiningFeePaid: true,
     }
   }
 
@@ -16,10 +17,15 @@ export function membershipFromJoinIntent(intent: JoinIntent) {
     membershipType: "prospective-leo" as MembershipType,
     membershipStatus: "pending" as MembershipStatus,
     trainingStatus: "pending" as const,
+    joiningFeePaid: false,
   }
 }
 
-export function postAuthPath(user?: Pick<User, "membershipType"> | null, fallback = "/portal") {
+export function postAuthPath(
+  user?: Pick<User, "membershipType" | "joiningFeePaid"> | null,
+  fallback = "/portal",
+) {
+  if (user?.membershipType === "prospective-leo" && !user.joiningFeePaid) return "/portal/join-fee"
   if (user?.membershipType === "prospective-leo") return "/portal/training"
   return fallback
 }

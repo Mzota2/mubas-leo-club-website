@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { applyActionCode, reload } from "firebase/auth"
@@ -12,6 +12,20 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2 } from "lucide-react"
 
 export default function VerifyPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-leo-primary" />
+        </div>
+      }
+    >
+      <VerifyContent />
+    </Suspense>
+  )
+}
+
+function VerifyContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(true)
@@ -40,7 +54,7 @@ export default function VerifyPage() {
         setSuccess("Email verified successfully.")
 
         if (auth.currentUser) {
-          router.replace("/portal")
+          router.replace("/portal/join-fee")
         }
       } catch (err: any) {
         setError(err?.message || "Failed to verify email")

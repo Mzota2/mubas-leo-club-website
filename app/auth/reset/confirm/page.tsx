@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth"
@@ -14,6 +14,20 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 
 export default function ResetConfirmPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-leo-primary" />
+        </div>
+      }
+    >
+      <ResetConfirmContent />
+    </Suspense>
+  )
+}
+
+function ResetConfirmContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 

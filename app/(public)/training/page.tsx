@@ -41,7 +41,7 @@ export default function TrainingPage() {
           <CardContent className="p-6 md:p-8">
             <h2 className="text-2xl font-bold mb-2">New Member Training Program</h2>
             <p className="text-gray-700 mb-4 max-w-3xl">
-              Prospective members go through this program only — YouTube lessons, videos, and in-app articles, then a quiz after each module. Score 50% or higher to become a full Leo. Already a member before this website? Choose that at registration, or ask an admin for a waiver.
+              Prospective members pay a once-off joining fee, then complete this program — YouTube lessons, videos, and in-app articles, with a quiz after each module. Score 50% or higher to become a full Leo. Already a member? Choose that at registration.
             </p>
             <div className="flex flex-wrap gap-3">
               <Button asChild className="bg-leo-primary text-white hover:bg-leo-primary-dark">

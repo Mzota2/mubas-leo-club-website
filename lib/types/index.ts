@@ -2,7 +2,7 @@ export type UserRole = "public" | "member" | "leader" | "admin"
 export type MembershipType = "leo" | "prospective-leo"
 export type JoinIntent = "joining" | "existing"
 export type MembershipStatus = "pending" | "active" | "inactive" | "suspended"
-export type FeePeriod = "monthly" | "semester" | "yearly"
+export type FeePeriod = "monthly" | "semester" | "yearly" | "joining"
 
 export interface MembershipFee {
   id: string
@@ -43,6 +43,8 @@ export interface User {
   whatsappGroupLink?: string // For newly promoted leos
   trainingStatus?: "pending" | "completed" | "waived"
   trainingCompletedAt?: string
+  joiningFeePaid?: boolean
+  joiningFeePaidAt?: string
   createdAt: string
   updatedAt: string
 }
@@ -233,6 +235,7 @@ export interface MembershipBillingSettings {
   monthlyFee: number
   semesterFee: number
   yearlyFee: number
+  joiningFee: number
   semesterStart: string
   semesterEnd: string
 }

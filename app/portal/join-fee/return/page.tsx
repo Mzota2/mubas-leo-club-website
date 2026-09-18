@@ -7,8 +7,10 @@ import { CheckCircle2, Loader2, XCircle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { verifyPayment } from "@/lib/paychangu/client"
+import { useAuth } from "@/lib/hooks/use-auth"
+import { useUpdateUser } from "@/lib/hooks/use-users"
 
-export default function MembershipReturnPage() {
+export default function JoinFeeReturnPage() {
   return (
     <Suspense
       fallback={
@@ -17,37 +19,53 @@ export default function MembershipReturnPage() {
         </div>
       }
     >
-      <MembershipReturnContent />
+      <JoinFeeReturnContent />
     </Suspense>
   )
 }
 
-function MembershipReturnContent() {
+function JoinFeeReturnContent() {
   const searchParams = useSearchParams()
   const txRef = searchParams.get("txRef") || searchParams.get("transactionId")
+  const { user, loading } = useAuth()
+  const updateUser = useUpdateUser()
   const [status, setStatus] = useState<"loading" | "success" | "failed">("loading")
 
   useEffect(() => {
     let cancelled = false
     async function run() {
+      if (loading) return
       if (!txRef) {
         setStatus("failed")
         return
       }
       const ok = await verifyPayment(txRef)
+      if (ok && user?.id && !user.joiningFeePaid) {
+        try {
+          await updateUser.mutateAsync({
+            userId: user.id,
+            data: {
+              joiningFeePaid: true,
+              joiningFeePaidAt: new Date().toISOString(),
+            },
+          })
+        } catch {
+          // Fee record is the source of truth if the profile update is delayed.
+        }
+      }
       if (!cancelled) setStatus(ok ? "success" : "failed")
     }
     run()
     return () => {
       cancelled = true
     }
-  }, [txRef])
+  }, [loading, txRef, updateUser, user?.id, user?.joiningFeePaid])
 
   return (
     <div className="px-4 py-10">
       <Card className="mx-auto max-w-md border-none bg-white shadow-sm">
         <CardHeader>
-          <CardTitle>Membership payment</CardTitle>
+          <CardTitle>Joining fee</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {status === "loading" ? (
@@ -59,7 +77,7 @@ function MembershipReturnContent() {
             <div className="flex items-start gap-3">
               <CheckCircle2 className="mt-0.5 h-6 w-6 text-emerald-600" />
               <div>
-                <p className="font-medium">Payment received. Your membership fee is marked paid.</p>
+                <p className="font-medium">Joining fee received. You can now take the training quizzes.</p>
                 <p className="text-sm text-neutral-600">Reference: {txRef}</p>
               </div>
             </div>
@@ -73,7 +91,9 @@ function MembershipReturnContent() {
             </div>
           )}
           <Button asChild className="w-full bg-leo-primary text-white">
-            <Link href="/portal/membership">Back to membership</Link>
+            <Link href={status === "success" ? "/portal/training" : "/portal/join-fee"}>
+              {status === "success" ? "Start training" : "Back to joining fee"}
+            </Link>
           </Button>
         </CardContent>
       </Card>

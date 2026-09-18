@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/firebase/config"
-import { collection, getDocs, query, updateDoc, where } from "firebase/firestore"
+import { collection, doc, getDocs, query, updateDoc, where } from "firebase/firestore"
 
 export async function POST(request: Request) {
   try {
@@ -21,12 +21,20 @@ export async function POST(request: Request) {
       const feesSnapshot = await getDocs(feesQuery)
       const paidAt = new Date().toISOString()
       await Promise.all(
-        feesSnapshot.docs.map((feeDoc) =>
-          updateDoc(feeDoc.ref, {
+        feesSnapshot.docs.map(async (feeDoc) => {
+          await updateDoc(feeDoc.ref, {
             status: "paid",
             paymentDate: paidAt,
-          }),
-        ),
+          })
+          const fee = feeDoc.data()
+          if (fee.period === "joining" && fee.userId) {
+            await updateDoc(doc(db, "users", fee.userId), {
+              joiningFeePaid: true,
+              joiningFeePaidAt: paidAt,
+              updatedAt: paidAt,
+            })
+          }
+        }),
       )
     }
 

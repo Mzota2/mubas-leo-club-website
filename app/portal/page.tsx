@@ -211,18 +211,30 @@ export default function PortalDashboard() {
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold">
-                  {user?.membershipStatus === "pending" ? "Complete training while we approve you" : "Become a full Leo member"}
+                  {!user?.joiningFeePaid
+                    ? "Pay your joining fee"
+                    : user?.membershipStatus === "pending"
+                      ? "Complete training while we approve you"
+                      : "Become a full Leo member"}
                 </h3>
                 <p className="mt-1 text-sm text-neutral-700">
-                  {user?.membershipStatus === "pending"
-                    ? "An admin still needs to approve your joining request. Meanwhile, go through the new member training program — it is the only training required."
-                    : "Complete the new member training program (50% or higher on each quiz) and pay membership fees to become a full Leo."}
+                  {!user?.joiningFeePaid
+                    ? "The once-off joining fee is required before you can take training quizzes. Membership dues are separate."
+                    : user?.membershipStatus === "pending"
+                      ? "An admin still needs to approve your joining request. Meanwhile, go through the new member training program — it is the only training required."
+                      : "Complete the new member training program (50% or higher on each quiz) and pay membership fees to become a full Leo."}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
+                  {!user?.joiningFeePaid ? (
+                    <Button asChild size="sm" className="bg-amber-600 text-white hover:bg-amber-700">
+                      <Link href="/portal/join-fee">Pay joining fee</Link>
+                    </Button>
+                  ) : (
+                    <Button asChild size="sm" variant="outline" className="border-amber-300 text-amber-800">
+                      <Link href="/portal/training">Start training</Link>
+                    </Button>
+                  )}
                   <Button asChild size="sm" variant="outline" className="border-amber-300 text-amber-800">
-                    <Link href="/portal/training">Start training</Link>
-                  </Button>
-                  <Button asChild size="sm" className="bg-amber-600 text-white hover:bg-amber-700">
                     <Link href="/portal/membership">Pay membership</Link>
                   </Button>
                 </div>

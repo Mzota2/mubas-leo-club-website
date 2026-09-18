@@ -6,14 +6,14 @@ export interface PayChanguPaymentData {
   currency?: string
   callbackUrl?: string
   returnUrl?: string
-  purpose?: "donation" | "order" | "membership"
+  purpose?: "donation" | "order" | "membership" | "joining"
   userId?: string
   message?: string
   causeId?: string
   causeTitle?: string
   fiscalYear?: string
   txRef?: string
-  period?: "monthly" | "semester" | "yearly"
+  period?: "monthly" | "semester" | "yearly" | "joining"
   coverageStart?: string
   coverageEnd?: string
   dueDate?: string

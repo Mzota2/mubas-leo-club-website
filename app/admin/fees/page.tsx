@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/hooks/use-auth"
-import { useUsers } from "@/lib/hooks/use-users"
+import { useUsers, useUpdateUser } from "@/lib/hooks/use-users"
 import { useCreateMembershipFee, useMembershipFees } from "@/lib/hooks/use-membership-fees"
 import { usePlatformSettings, useUpdatePlatformSettings } from "@/lib/hooks/use-settings"
 import {
@@ -25,6 +25,7 @@ import {
   billingFromSettings,
   collectedInRange,
   coverageFor,
+  hasPaidJoiningFee,
   memberPaidInRange,
   periodLabel,
   toIsoDate,
@@ -32,7 +33,7 @@ import {
 import { displayName, formatDate, formatMoney } from "@/lib/utils/format"
 import type { FeePeriod, User } from "@/lib/types"
 
-type View = "monthly" | "semester" | "yearly"
+type View = "monthly" | "semester" | "yearly" | "joining"
 
 export default function AdminFeesPage() {
   const { toast } = useToast()
@@ -41,6 +42,7 @@ export default function AdminFeesPage() {
   const { data: fees = [], isLoading: feesLoading } = useMembershipFees()
   const { data: settings, isLoading: settingsLoading } = usePlatformSettings()
   const updateSettings = useUpdatePlatformSettings()
+  const updateUser = useUpdateUser()
   const createFee = useCreateMembershipFee()
 
   const billing = billingFromSettings(settings)
@@ -48,6 +50,7 @@ export default function AdminFeesPage() {
   const [monthlyFee, setMonthlyFee] = useState("")
   const [semesterFee, setSemesterFee] = useState("")
   const [yearlyFee, setYearlyFee] = useState("")
+  const [joiningFee, setJoiningFee] = useState("")
   const [semesterStart, setSemesterStart] = useState("")
   const [semesterEnd, setSemesterEnd] = useState("")
 
@@ -60,17 +63,27 @@ export default function AdminFeesPage() {
     setMonthlyFee(String(billing.monthlyFee))
     setSemesterFee(String(billing.semesterFee))
     setYearlyFee(String(billing.yearlyFee))
+    setJoiningFee(String(billing.joiningFee))
     setSemesterStart(billing.semesterStart)
     setSemesterEnd(billing.semesterEnd)
-  }, [billing.monthlyFee, billing.semesterFee, billing.yearlyFee, billing.semesterStart, billing.semesterEnd])
+  }, [billing.monthlyFee, billing.semesterFee, billing.yearlyFee, billing.joiningFee, billing.semesterStart, billing.semesterEnd])
 
   const now = new Date()
-  const range = coverageFor(view, now, billing)
+  const isJoiningView = view === "joining"
+  const range = coverageFor(isJoiningView ? "yearly" : view, now, billing)
   const periodFee = amountForPeriod(view, billing)
   const roster = (users ?? []).filter((member) => (member.membershipStatus ?? "active") !== "inactive")
-  const paidMembers = roster.filter((member) => memberPaidInRange(fees, member.id, range.start, range.end))
-  const unpaidMembers = roster.filter((member) => !memberPaidInRange(fees, member.id, range.start, range.end))
-  const collected = collectedInRange(fees, range.start, range.end)
+  const joiningRoster = roster.filter((member) => member.membershipType === "prospective-leo" || member.joinIntent === "joining")
+  const activeRoster = isJoiningView ? joiningRoster : roster
+  const paidMembers = activeRoster.filter((member) =>
+    isJoiningView ? hasPaidJoiningFee(fees, member.id, member) : memberPaidInRange(fees, member.id, range.start, range.end),
+  )
+  const unpaidMembers = activeRoster.filter((member) =>
+    isJoiningView ? !hasPaidJoiningFee(fees, member.id, member) : !memberPaidInRange(fees, member.id, range.start, range.end),
+  )
+  const collected = isJoiningView
+    ? fees.filter((fee) => fee.period === "joining" && fee.status === "paid").reduce((sum, fee) => sum + Number(fee.amount || 0), 0)
+    : collectedInRange(fees, range.start, range.end)
   const outstanding = unpaidMembers.length * periodFee
 
   const handleSaveBilling = async () => {
@@ -85,6 +98,7 @@ export default function AdminFeesPage() {
         monthlyFee: Number(monthlyFee) || 0,
         semesterFee: Number(semesterFee) || 0,
         yearlyFee: Number(yearlyFee) || 0,
+        joiningFee: Number(joiningFee) || 0,
         semesterStart,
         semesterEnd,
       },
@@ -119,6 +133,15 @@ export default function AdminFeesPage() {
       recordedBy: adminUser.id,
       createdAt: paidAt,
     })
+    if (offlinePeriod === "joining") {
+      await updateUser.mutateAsync({
+        userId: offlineUser.id,
+        data: {
+          joiningFeePaid: true,
+          joiningFeePaidAt: paidAt,
+        },
+      })
+    }
     toast({
       title: "Payment recorded",
       description: `${displayName(offlineUser)} marked paid for ${periodLabel(offlinePeriod).toLowerCase()}.`,
@@ -155,6 +178,10 @@ export default function AdminFeesPage() {
               <Input id="yearlyFee" type="number" value={yearlyFee} onChange={(event) => setYearlyFee(event.target.value)} className="mt-1" />
             </div>
             <div>
+              <Label htmlFor="joiningFee">Joining fee, once-off (MWK)</Label>
+              <Input id="joiningFee" type="number" value={joiningFee} onChange={(event) => setJoiningFee(event.target.value)} className="mt-1" />
+            </div>
+            <div>
               <Label htmlFor="semesterStart">Semester start</Label>
               <Input id="semesterStart" type="date" value={semesterStart} onChange={(event) => setSemesterStart(event.target.value)} className="mt-1" />
             </div>
@@ -176,11 +203,14 @@ export default function AdminFeesPage() {
           <TabsTrigger value="monthly">This month</TabsTrigger>
           <TabsTrigger value="semester">This semester</TabsTrigger>
           <TabsTrigger value="yearly">This year</TabsTrigger>
+          <TabsTrigger value="joining">Joining fee</TabsTrigger>
         </TabsList>
       </Tabs>
 
       <p className="text-sm text-muted-foreground">
-        Coverage: {formatDate(range.start.toISOString())} – {formatDate(range.end.toISOString())}
+        {isJoiningView
+          ? "Once-off joining fee for prospective members. Required before quizzes."
+          : `Coverage: ${formatDate(range.start.toISOString())} – ${formatDate(range.end.toISOString())}`}
       </p>
 
       <div className="grid gap-4 sm:grid-cols-4">
@@ -192,7 +222,7 @@ export default function AdminFeesPage() {
 
       {usersLoading ? (
         <Skeleton className="h-48 w-full" />
-      ) : roster.length === 0 ? (
+      ) : activeRoster.length === 0 ? (
         <AdminEmptyState icon={CreditCard} title="No members yet" description="Members appear here after they register." />
       ) : (
         <div className="overflow-hidden rounded-md border bg-white">
@@ -207,8 +237,10 @@ export default function AdminFeesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {roster.map((member) => {
-                const paid = memberPaidInRange(fees, member.id, range.start, range.end)
+              {activeRoster.map((member) => {
+                const paid = isJoiningView
+                  ? hasPaidJoiningFee(fees, member.id, member)
+                  : memberPaidInRange(fees, member.id, range.start, range.end)
                 return (
                   <TableRow key={member.id}>
                     <TableCell>
@@ -257,6 +289,7 @@ export default function AdminFeesPage() {
                   <SelectItem value="monthly">Monthly</SelectItem>
                   <SelectItem value="semester">Semester</SelectItem>
                   <SelectItem value="yearly">Yearly</SelectItem>
+                  <SelectItem value="joining">Joining (once-off)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

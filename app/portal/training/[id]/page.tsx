@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { useUpdateUser } from "@/lib/hooks/use-users"
+import { useMembershipFees } from "@/lib/hooks/use-membership-fees"
+import { hasPaidJoiningFee } from "@/lib/membership/billing"
 import {
   useTrainingModule,
   useTrainingModules,
@@ -33,6 +35,8 @@ export default function PortalTrainingModulePage({ params }: { params: Promise<{
   const { data: module } = useTrainingModule(id)
   const { data: modules = [] } = useTrainingModules()
   const { data: savedProgress } = useTrainingProgress(user?.id)
+  const { data: fees = [] } = useMembershipFees(user?.id)
+  const joiningPaid = user ? hasPaidJoiningFee(fees, user.id, user) : false
   const upsertProgress = useUpsertTrainingProgress()
   const updateUser = useUpdateUser()
 
@@ -64,6 +68,11 @@ export default function PortalTrainingModulePage({ params }: { params: Promise<{
 
   const submitQuiz = async () => {
     if (!user || !progress || !module || questions.length === 0) return
+    if (!joiningPaid) {
+      toast({ title: "Joining fee required", description: "Pay the once-off joining fee before taking quizzes." })
+      router.push("/portal/join-fee")
+      return
+    }
     const correct = questions.filter((question) => answers[question.id] === question.correctIndex).length
     const score = Math.round((correct / questions.length) * 100)
     const passed = score >= requiredScore
@@ -177,7 +186,14 @@ export default function PortalTrainingModulePage({ params }: { params: Promise<{
           {latest ? ` Last score: ${latest.score}%.` : ""}
         </p>
 
-        {!allViewed ? (
+        {!joiningPaid ? (
+          <div className="mt-3 rounded-md bg-amber-50 p-3">
+            <p className="text-sm text-amber-900">Pay the once-off joining fee to unlock this quiz. It is separate from membership dues.</p>
+            <Button asChild className="mt-3 bg-leo-primary text-white">
+              <Link href="/portal/join-fee">Pay joining fee</Link>
+            </Button>
+          </div>
+        ) : !allViewed ? (
           <p className="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-900">Study every resource above before unlocking the quiz.</p>
         ) : questions.length === 0 ? (
           <p className="mt-3 text-sm text-neutral-600">The quiz has not been added yet.</p>

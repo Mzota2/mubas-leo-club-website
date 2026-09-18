@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       })
     }
 
-    if (body.purpose === "membership") {
+    if (body.purpose === "membership" || body.purpose === "joining") {
       if (!body.userId) {
         return NextResponse.json({ success: false, error: "A signed-in member is required" }, { status: 400 })
       }
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       await createMembershipFee({
         userId: body.userId,
         amount: Number(body.amount),
-        period: body.period || "yearly",
+        period: body.purpose === "joining" ? "joining" : body.period || "yearly",
         coverageStart: body.coverageStart || now,
         coverageEnd: body.coverageEnd || now,
         dueDate: body.dueDate || body.coverageEnd || now,
@@ -65,6 +65,8 @@ export async function POST(request: Request) {
         ? `${appUrl}/donate/return?txRef=${txRef}`
         : body.purpose === "membership"
           ? `${appUrl}/portal/membership/return?txRef=${txRef}`
+          : body.purpose === "joining"
+            ? `${appUrl}/portal/join-fee/return?txRef=${txRef}`
           : `${appUrl}/portal/shop/orders`)
 
     const payChanguResponse = await fetch("https://api.paychangu.com/payment", {

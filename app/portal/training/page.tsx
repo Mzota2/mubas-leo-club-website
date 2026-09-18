@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { useTrainingModules, useTrainingProgress } from "@/lib/hooks/use-training-program"
+import { useMembershipFees } from "@/lib/hooks/use-membership-fees"
+import { hasPaidJoiningFee } from "@/lib/membership/billing"
 import { trainingBadges, levelForXp, TRAINING_PASSING_SCORE } from "@/lib/training/gamify"
 import { emptyProgress, isModuleUnlocked, moduleStreak, overallScore, publishedModules } from "@/lib/training/progress"
 import { portalCanvasMuted, portalCanvasTitle } from "@/components/portal/styles"
@@ -14,6 +16,8 @@ export default function PortalTrainingPage() {
   const { user } = useAuth()
   const { data: modules = [] } = useTrainingModules()
   const { data: savedProgress } = useTrainingProgress(user?.id)
+  const { data: fees = [] } = useMembershipFees(user?.id)
+  const joiningPaid = user ? hasPaidJoiningFee(fees, user.id, user) : false
   const progress = savedProgress ?? (user ? emptyProgress(user.id) : null)
   const curriculum = publishedModules(modules)
   const level = levelForXp(progress?.xp ?? 0)
@@ -34,6 +38,18 @@ export default function PortalTrainingPage() {
           {user?.membershipStatus === "pending" ? " An admin still needs to approve your joining request." : ""}
         </p>
       </div>
+
+      {!joiningPaid && user?.membershipType === "prospective-leo" ? (
+        <div className="rounded-md bg-white p-4 shadow-sm">
+          <p className="font-semibold text-neutral-900">Pay your joining fee first</p>
+          <p className="mt-1 text-sm text-neutral-600">
+            The once-off joining fee unlocks quizzes. You can review modules, but you cannot take a quiz until it is paid.
+          </p>
+          <Button asChild className="mt-3 rounded-md bg-leo-primary text-white">
+            <Link href="/portal/join-fee">Pay joining fee</Link>
+          </Button>
+        </div>
+      ) : null}
 
       <section className="rounded-md bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">

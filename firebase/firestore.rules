@@ -32,6 +32,10 @@ service cloud.firestore {
 
       allow update: if isAdminOrLeader();
 
+      allow update: if !signedIn()
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['joiningFeePaid', 'joiningFeePaidAt', 'updatedAt'])
+        && request.resource.data.joiningFeePaid == true;
+
       allow delete: if false;
     }
 

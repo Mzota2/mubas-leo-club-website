@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,6 +9,20 @@ import { Loader2, CheckCircle2, XCircle } from "lucide-react"
 import { verifyPayment } from "@/lib/paychangu/client"
 
 export default function DonateReturnPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-leo-primary" />
+        </div>
+      }
+    >
+      <DonateReturnContent />
+    </Suspense>
+  )
+}
+
+function DonateReturnContent() {
   const searchParams = useSearchParams()
   const txRef = searchParams.get("txRef") || searchParams.get("transactionId")
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useForm } from "react-hook-form"
@@ -105,6 +105,20 @@ interface AuthFormProps {
 }
 
 export function AuthForm({ mode }: AuthFormProps) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-8 w-8 animate-spin text-leo-primary" />
+        </div>
+      }
+    >
+      <AuthFormInner mode={mode} />
+    </Suspense>
+  )
+}
+
+function AuthFormInner({ mode }: AuthFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
@@ -140,14 +154,17 @@ export function AuthForm({ mode }: AuthFormProps) {
   const { register, handleSubmit } = form
   const errors: any = form.formState.errors
 
-  const getRedirectPath = (membershipType?: string) => {
+  const getRedirectPath = (membershipType?: string, joiningFeePaid?: boolean) => {
+    if (membershipType === "prospective-leo" && !joiningFeePaid) return "/portal/join-fee"
     const raw = searchParams?.get("redirect") || ""
     if (raw.startsWith("http://") || raw.startsWith("https://")) {
-      return postAuthPath({ membershipType: membershipType as "leo" | "prospective-leo" })
+      return postAuthPath({ membershipType: membershipType as "leo" | "prospective-leo", joiningFeePaid })
     }
-    if (!raw) return postAuthPath({ membershipType: membershipType as "leo" | "prospective-leo" })
+    if (!raw) return postAuthPath({ membershipType: membershipType as "leo" | "prospective-leo", joiningFeePaid })
     const normalized = raw.startsWith("/") ? raw : `/${raw}`
-    if (normalized === "/portal") return postAuthPath({ membershipType: membershipType as "leo" | "prospective-leo" })
+    if (normalized === "/portal" || normalized.startsWith("/portal/training")) {
+      return postAuthPath({ membershipType: membershipType as "leo" | "prospective-leo", joiningFeePaid })
+    }
     return normalized
   }
 
@@ -172,7 +189,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         description: "Logged in successfully",
       })
       const profile = await getUser(userCredential.user.uid)
-      router.push(getRedirectPath(profile?.membershipType))
+      router.push(getRedirectPath(profile?.membershipType, profile?.joiningFeePaid))
     } catch (err: any) {
       setError(err.message || "Failed to login")
     } finally {
@@ -244,7 +261,9 @@ export function AuthForm({ mode }: AuthFormProps) {
         title: "Success",
         description: "Signed in with Google",
       })
-      router.push(getRedirectPath(String(safeDoc.membershipType || "")))
+      router.push(
+        getRedirectPath(String(safeDoc.membershipType || ""), Boolean(safeDoc.joiningFeePaid)),
+      )
     } catch (err: any) {
       setError(err.message || "Failed to sign in with Google")
     } finally {
@@ -305,9 +324,10 @@ export function AuthForm({ mode }: AuthFormProps) {
 
       toast({
         title: "Profile saved",
-        description: data.joinIntent === "joining" ? "Continue with new member training." : "Your account is ready.",
+        description:
+          data.joinIntent === "joining" ? "Pay the once-off joining fee to unlock training quizzes." : "Your account is ready.",
       })
-      router.push(getRedirectPath(data.joinIntent === "joining" ? "prospective-leo" : "leo"))
+      router.push(getRedirectPath(data.joinIntent === "joining" ? "prospective-leo" : "leo", data.joinIntent !== "joining"))
     } catch (err: any) {
       setError(err.message || "Failed to save your profile")
     } finally {
