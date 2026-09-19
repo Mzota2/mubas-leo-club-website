@@ -14,11 +14,14 @@ import {
   addDoc,
   writeBatch,
   increment,
+  deleteField,
   type QueryConstraint,
 } from "firebase/firestore"
 import { auth, db } from "./config"
 import { generateLeoId } from "@/lib/utils/leo-id"
-import type { User, Event, Product, Order, Donation, Notification, Leader, Training, GalleryImage, PlatformSettings, DonationCause, MembershipFee, Meeting, Attendance, TrainingModule, TrainingProgress } from "@/lib/types"
+import { userToPublicLeader } from "@/lib/content/executives"
+import { displayName } from "@/lib/utils/format"
+import type { User, Event, Product, Order, Donation, Notification, Leader, Training, GalleryImage, PlatformSettings, DonationCause, MembershipFee, Meeting, Attendance, TrainingModule, TrainingProgress, ExecutiveTerm, BirthdayCalendarEntry, SpecialOffer } from "@/lib/types"
 
 function omitUndefined<T extends Record<string, unknown>>(data: T) {
   return Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined)) as T
@@ -50,6 +53,18 @@ export async function createUser(userId: string, userData: Omit<User, "id" | "le
       updatedAt: Timestamp.now().toDate().toISOString(),
     } as Record<string, unknown>),
   )
+
+  await syncBirthdayCalendar({
+    id: userId,
+    firstName: userData.firstName,
+    lastName: userData.lastName,
+    middleName: userData.middleName,
+    profileImage: userData.profileImage,
+    dateOfBirth: userData.dateOfBirth,
+    birthdayStyle: userData.birthdayStyle,
+    birthdayMessage: userData.birthdayMessage,
+    birthdayVisible: userData.birthdayVisible,
+  }).catch(() => undefined)
 }
 
 export async function getUser(userId: string): Promise<User | null> {
@@ -67,11 +82,118 @@ export async function updateUser(userId: string, userData: Partial<User>) {
       updatedAt: Timestamp.now().toDate().toISOString(),
     } as Record<string, unknown>),
   )
+
+  if ("dateOfBirth" in userData || "firstName" in userData || "lastName" in userData || "middleName" in userData || "profileImage" in userData || "birthdayStyle" in userData || "birthdayMessage" in userData || "birthdayVisible" in userData) {
+    const fresh = await getUser(userId)
+    if (fresh) await syncBirthdayCalendar(fresh).catch(() => undefined)
+  }
 }
 
 export async function getAllUsers() {
   const usersSnapshot = await getDocs(collection(db, "users"))
   return usersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as User)
+}
+
+export async function getCurrentExecutives() {
+  const executivesQuery = query(
+    collection(db, "users"),
+    where("executiveStatus", "==", "current"),
+  )
+  const snapshot = await getDocs(executivesQuery)
+  return snapshot.docs
+    .map((item) => ({ id: item.id, ...item.data() }) as User)
+    .filter((user) => Boolean(user.position))
+}
+
+export async function assignExecutive(
+  userId: string,
+  assignment: {
+    position: string
+    term: string
+    status: "current" | "past"
+    order?: number
+    bio?: string
+    replace?: { position: string; term: string }
+  },
+) {
+  const user = await getUser(userId)
+  if (!user) throw new Error("Member not found")
+
+  const existing = user.executiveTerms ?? []
+  let terms: ExecutiveTerm[] = existing.map((item) => {
+    if (assignment.replace && item.position === assignment.replace.position && item.term === assignment.replace.term) {
+      return item
+    }
+    if (assignment.status === "current" && item.status === "current") {
+      return { ...item, status: "past" }
+    }
+    return item
+  })
+
+  const nextTerm: ExecutiveTerm = {
+    position: assignment.position,
+    term: assignment.term,
+    status: assignment.status,
+    order: assignment.order,
+  }
+
+  const replaceIndex = assignment.replace
+    ? terms.findIndex((item) => item.position === assignment.replace?.position && item.term === assignment.replace?.term)
+    : terms.findIndex((item) => item.position === assignment.position && item.term === assignment.term)
+
+  if (replaceIndex >= 0) {
+    terms[replaceIndex] = nextTerm
+  } else {
+    terms = [...terms, nextTerm]
+  }
+
+  const current = [...terms].reverse().find((item) => item.status === "current")
+  const latest = current ?? terms[terms.length - 1]
+
+  await updateUser(userId, {
+    position: latest?.position,
+    executiveTerm: latest?.term,
+    executiveStatus: latest?.status,
+    executiveOrder: latest?.order,
+    executiveBio: assignment.bio,
+    executiveTerms: terms,
+  })
+  await publishCurrentLeaders()
+}
+
+export async function endExecutiveTerm(userId: string) {
+  const user = await getUser(userId)
+  if (!user) throw new Error("Member not found")
+
+  const terms = (user.executiveTerms ?? []).map((item) =>
+    item.status === "current" ? { ...item, status: "past" as const } : item,
+  )
+  const latest = terms[terms.length - 1]
+
+  await updateUser(userId, {
+    position: latest?.position ?? user.position,
+    executiveTerm: latest?.term ?? user.executiveTerm,
+    executiveStatus: "past",
+    executiveOrder: latest?.order ?? user.executiveOrder,
+    executiveTerms: terms.length > 0 ? terms : user.position
+      ? [{ position: user.position, term: user.executiveTerm || "", status: "past", order: user.executiveOrder }]
+      : [],
+  })
+  await publishCurrentLeaders()
+}
+
+export async function clearExecutiveAssignment(userId: string) {
+  await ensureAuthToken()
+  await updateDoc(doc(db, "users", userId), {
+    position: deleteField(),
+    executiveTerm: deleteField(),
+    executiveStatus: deleteField(),
+    executiveOrder: deleteField(),
+    executiveBio: deleteField(),
+    executiveTerms: deleteField(),
+    updatedAt: Timestamp.now().toDate().toISOString(),
+  })
+  await publishCurrentLeaders()
 }
 
 // Event operations
@@ -257,6 +379,54 @@ export async function deleteDonationCause(causeId: string) {
   await deleteDoc(doc(db, "donationCauses", causeId))
 }
 
+export async function getSpecialOffers(activeOnly = false) {
+  try {
+    const snapshot = await getDocs(collection(db, "specialOffers"))
+    const offers = snapshot.docs
+      .map((item) => ({ id: item.id, ...item.data() }) as SpecialOffer)
+      .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
+    return activeOnly ? offers.filter((offer) => offer.isActive) : offers
+  } catch (error) {
+    console.error("getSpecialOffers failed", error)
+    return []
+  }
+}
+
+export async function getSpecialOffer(offerId: string): Promise<SpecialOffer | null> {
+  try {
+    const offerDoc = await getDoc(doc(db, "specialOffers", offerId))
+    if (!offerDoc.exists()) return null
+    return { id: offerDoc.id, ...offerDoc.data() } as SpecialOffer
+  } catch (error) {
+    console.error("getSpecialOffer failed", error)
+    return null
+  }
+}
+
+export async function createSpecialOffer(offerData: Omit<SpecialOffer, "id">) {
+  await ensureAuthToken()
+  const now = isoNow()
+  const docRef = await addDoc(collection(db, "specialOffers"), omitUndefined({
+    ...offerData,
+    createdAt: offerData.createdAt || now,
+    updatedAt: now,
+  } as Record<string, unknown>))
+  return docRef.id
+}
+
+export async function updateSpecialOffer(offerId: string, offerData: Partial<SpecialOffer>) {
+  await ensureAuthToken()
+  await updateDoc(doc(db, "specialOffers", offerId), omitUndefined({
+    ...offerData,
+    updatedAt: isoNow(),
+  } as Record<string, unknown>))
+}
+
+export async function deleteSpecialOffer(offerId: string) {
+  await ensureAuthToken()
+  await deleteDoc(doc(db, "specialOffers", offerId))
+}
+
 // Membership Fee operations
 export async function getMembershipFees(userId?: string) {
   const feesQuery = userId
@@ -380,6 +550,47 @@ export async function createNotification(notificationData: Omit<Notification, "i
   })
 }
 
+export async function syncBirthdayCalendar(member: {
+  id: string
+  firstName?: string
+  lastName?: string
+  middleName?: string
+  name?: string
+  profileImage?: string
+  dateOfBirth?: string
+  birthdayStyle?: string
+  birthdayMessage?: string
+  birthdayVisible?: boolean
+}) {
+  const ref = doc(db, "birthdayCalendar", member.id)
+  if (!member.dateOfBirth || member.birthdayVisible === false) {
+    await deleteDoc(ref).catch(() => undefined)
+    return
+  }
+  await setDoc(
+    ref,
+    omitUndefined({
+      memberId: member.id,
+      memberName: displayName(member),
+      memberImage: member.profileImage,
+      dateOfBirth: member.dateOfBirth,
+      style: member.birthdayStyle || "classic",
+      message: member.birthdayMessage,
+      updatedAt: Timestamp.now().toDate().toISOString(),
+    }),
+  )
+}
+
+export async function getBirthdayCalendar() {
+  const snapshot = await getDocs(collection(db, "birthdayCalendar"))
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as BirthdayCalendarEntry)
+}
+
+export async function publishBirthdayCalendar(users?: User[]) {
+  const members = users ?? (await getAllUsers())
+  await Promise.all(members.map((member) => syncBirthdayCalendar(member)))
+}
+
 export async function markNotificationAsRead(notificationId: string) {
   await updateDoc(doc(db, "notifications", notificationId), {
     read: true,
@@ -390,6 +601,54 @@ export async function markNotificationAsRead(notificationId: string) {
 export async function getLeaders() {
   const leadersSnapshot = await getDocs(collection(db, "leaders"))
   return leadersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Leader)
+}
+
+export async function publishCurrentLeaders(users?: User[]) {
+  const members = users ?? (await getAllUsers())
+  const current = members.filter((user) => user.executiveStatus === "current" && user.position)
+  const existing = await getLeaders()
+  const currentIds = new Set(current.map((user) => user.id))
+
+  await Promise.all(
+    existing
+      .filter((leader) => !currentIds.has(leader.id))
+      .map((leader) => deleteLeader(leader.id)),
+  )
+
+  await Promise.all(
+    current.map((user) => {
+      const card = userToPublicLeader(user)
+      return setDoc(
+        doc(db, "leaders", user.id),
+        omitUndefined({
+          name: card.name,
+          position: card.position,
+          bio: card.bio,
+          image: card.image,
+          email: card.email,
+          phone: card.phone,
+          order: card.order,
+        }),
+      )
+    }),
+  )
+}
+
+export async function createLeader(leaderData: Omit<Leader, "id">) {
+  const docRef = await addDoc(collection(db, "leaders"), omitUndefined({
+    ...leaderData,
+  }))
+  return docRef.id
+}
+
+export async function updateLeader(leaderId: string, leaderData: Partial<Leader>) {
+  await updateDoc(doc(db, "leaders", leaderId), omitUndefined({
+    ...leaderData,
+  }))
+}
+
+export async function deleteLeader(leaderId: string) {
+  await deleteDoc(doc(db, "leaders", leaderId))
 }
 
 // Training operations

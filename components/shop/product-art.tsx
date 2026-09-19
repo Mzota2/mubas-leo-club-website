@@ -18,7 +18,11 @@ export function ProductArt({
       style={src ? undefined : { backgroundColor: product.surface }}
     >
       {src ? (
-        <img src={src} alt={product.name} className="h-full w-full object-contain p-1.5" />
+        <img
+          src={src}
+          alt={product.name}
+          className={product.category === "offer" ? "h-full w-full object-cover" : "h-full w-full object-contain p-1.5"}
+        />
       ) : (
         <svg viewBox="0 0 120 120" className="h-full w-full" aria-hidden>
           {product.category === "tshirt" || product.category === "golfshirt" ? (

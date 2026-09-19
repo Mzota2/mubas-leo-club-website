@@ -75,10 +75,34 @@ function OrderCard({ order }: { order: Order }) {
 export default function OrdersPage() {
   const { user } = useAuth()
   const { data: liveOrders = [], isLoading } = useOrders(user?.id, true)
-  const usingSamples = !isLoading && liveOrders.length === 0
+  const usingSamples = Boolean(user) && !isLoading && liveOrders.length === 0
   const orders = usingSamples ? SAMPLE_ORDERS : liveOrders
   const activeOrders = orders.filter((order) => order.status === "pending" || order.status === "processing")
   const completedOrders = orders.filter((order) => order.status === "completed" || order.status === "cancelled")
+
+  if (!user) {
+    return (
+      <div className="space-y-6 px-4 py-6 lg:px-6 lg:py-8">
+        <PortalPageHeader
+          title="My orders"
+          description="Sign in to see orders tied to your Leo Club account."
+          actions={
+            <Button asChild className="bg-white text-neutral-900 lg:bg-leo-primary lg:text-white">
+              <Link href="/portal/shop">Shop</Link>
+            </Button>
+          }
+        />
+        <Card className="border-none bg-white p-8 text-center shadow-sm">
+          <Package className="mx-auto mb-3 h-16 w-16 text-gray-400" />
+          <p className="font-semibold">Guest checkout does not keep an order history here</p>
+          <p className="mt-1 text-sm text-gray-600">Use the email you entered at checkout for the PayChangu receipt.</p>
+          <Button asChild className="mt-5 rounded-md bg-leo-primary text-white hover:bg-leo-primary-dark">
+            <Link href="/auth/login">Sign in</Link>
+          </Button>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 px-4 py-6 lg:px-6 lg:py-8">

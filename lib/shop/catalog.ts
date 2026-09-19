@@ -207,6 +207,13 @@ export const shopProducts: ShopProduct[] = [
 ]
 
 export function getShopCategory(id: string) {
+  if (id === "offer") {
+    return {
+      id: "offer" as ShopCategoryId,
+      label: "Special offers",
+      description: "Limited campaigns and gift sets created by the club.",
+    }
+  }
   return shopCategories.find((category) => category.id === id)
 }
 

@@ -30,12 +30,27 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Eye, EyeOff, Loader2 } from "lucide-react"
+import { Eye, EyeOff, GraduationCap, Loader2, Lock, UserRound } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { membershipFromJoinIntent, postAuthPath } from "@/lib/membership/join"
 import { getUser } from "@/lib/firebase/firestore"
 import { generateLeoId } from "@/lib/utils/leo-id"
+import { STUDY_PROGRAMS, STUDY_YEARS } from "@/lib/content/academic"
 import type { JoinIntent } from "@/lib/types"
+
+const registerSteps = [
+  { id: 1, title: "Personal", caption: "Who you are", icon: UserRound },
+  { id: 2, title: "Academic", caption: "Study and graduation", icon: GraduationCap },
+  { id: 3, title: "Security", caption: "Create a password", icon: Lock },
+] as const
+
+const optionalDate = z.string().optional().or(z.literal(""))
+
+const academicFields = {
+  programOfStudy: z.string().min(2, "Program of study is required"),
+  yearOfStudy: z.string().min(1, "Year of study is required"),
+  expectedGraduationDate: z.string().min(1, "Expected graduation date is required"),
+}
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -73,8 +88,9 @@ const registerSchema = z
     username: z.string().min(3, "Username must be at least 3 characters"),
     email: z.string().email("Invalid email address"),
     phone: z.string().min(10, "Phone number is required"),
-    dateOfBirth: z.string().min(1, "Date of birth is required"),
+    dateOfBirth: optionalDate,
     joinIntent: z.enum(["joining", "existing"], { required_error: "Select whether you are joining or already a member" }),
+    ...academicFields,
     password: z.string().min(8, "Password must be at least 8 characters"),
     confirmPassword: z.string(),
   })
@@ -92,8 +108,9 @@ const googleCompleteSchema = z.object({
   lastName: z.string().min(2, "Last name is required"),
   username: z.string().min(3, "Username must be at least 3 characters"),
   phone: z.string().min(10, "Phone number is required"),
-  dateOfBirth: z.string().min(1, "Date of birth is required"),
+  dateOfBirth: optionalDate,
   joinIntent: z.enum(["joining", "existing"], { required_error: "Select whether you are joining or already a member" }),
+  ...academicFields,
 })
 
 type LoginFormData = z.infer<typeof loginSchema>
@@ -132,10 +149,28 @@ function AuthFormInner({ mode }: AuthFormProps) {
   const [googleUid, setGoogleUid] = useState<string | null>(null)
   const [googleProfileImage, setGoogleProfileImage] = useState<string>("")
   const [googleEmail, setGoogleEmail] = useState<string>("")
+  const [registerStep, setRegisterStep] = useState(1)
 
   const form = useForm<any>({
     resolver: zodResolver(mode === "login" ? loginSchema : mode === "register" ? registerSchema : resetSchema),
-    defaultValues: mode === "register" ? { joinIntent: "joining" } : undefined,
+    defaultValues:
+      mode === "register"
+        ? {
+            joinIntent: "joining",
+            firstName: "",
+            middleName: "",
+            lastName: "",
+            username: "",
+            email: "",
+            phone: "",
+            dateOfBirth: "",
+            programOfStudy: "",
+            yearOfStudy: "",
+            expectedGraduationDate: "",
+            password: "",
+            confirmPassword: "",
+          }
+        : undefined,
   })
 
   const googleCompleteForm = useForm<GoogleCompleteFormData>({
@@ -147,6 +182,9 @@ function AuthFormInner({ mode }: AuthFormProps) {
       phone: "",
       dateOfBirth: "",
       joinIntent: "joining",
+      programOfStudy: "",
+      yearOfStudy: "",
+      expectedGraduationDate: "",
     },
   })
 
@@ -206,8 +244,38 @@ function AuthFormInner({ mode }: AuthFormProps) {
   }
 
   const isProfileComplete = (data: any) => {
-    const required = ["firstName", "lastName", "username", "email", "phone", "dateOfBirth"]
+    const required = [
+      "firstName",
+      "lastName",
+      "username",
+      "email",
+      "phone",
+      "programOfStudy",
+      "yearOfStudy",
+      "expectedGraduationDate",
+    ]
     return required.every((k) => typeof data?.[k] === "string" && data[k].trim().length > 0)
+  }
+
+  const academicPayload = (data: {
+    programOfStudy: string
+    yearOfStudy: string
+    expectedGraduationDate: string
+    dateOfBirth?: string
+  }) => ({
+    programOfStudy: data.programOfStudy,
+    yearOfStudy: data.yearOfStudy,
+    expectedGraduationDate: data.expectedGraduationDate,
+    ...(data.dateOfBirth ? { dateOfBirth: data.dateOfBirth } : {}),
+  })
+
+  const goToNextRegisterStep = async () => {
+    const fields =
+      registerStep === 1
+        ? (["joinIntent", "firstName", "lastName", "username", "email", "phone"] as const)
+        : (["programOfStudy", "yearOfStudy", "expectedGraduationDate"] as const)
+    const valid = await form.trigger(fields as unknown as string[])
+    if (valid) setRegisterStep((step) => Math.min(3, step + 1))
   }
 
   const handleGoogleSignIn = async () => {
@@ -247,6 +315,9 @@ function AuthFormInner({ mode }: AuthFormProps) {
         phone: String((safeDoc.phone as string | undefined) ?? ""),
         dateOfBirth: String((safeDoc.dateOfBirth as string | undefined) ?? ""),
         joinIntent: ((safeDoc.joinIntent as JoinIntent | undefined) ?? "joining") as JoinIntent,
+        programOfStudy: String((safeDoc.programOfStudy as string | undefined) ?? ""),
+        yearOfStudy: String((safeDoc.yearOfStudy as string | undefined) ?? ""),
+        expectedGraduationDate: String((safeDoc.expectedGraduationDate as string | undefined) ?? ""),
       }
 
       setGoogleUid(user.uid)
@@ -280,7 +351,9 @@ function AuthFormInner({ mode }: AuthFormProps) {
     if (!v.lastName) missing.push("last name")
     if (!v.username) missing.push("username")
     if (!v.phone) missing.push("phone")
-    if (!v.dateOfBirth) missing.push("date of birth")
+    if (!v.programOfStudy) missing.push("program of study")
+    if (!v.yearOfStudy) missing.push("year of study")
+    if (!v.expectedGraduationDate) missing.push("expected graduation date")
     return missing
   }, [googleDialogOpen, googleValues])
 
@@ -302,9 +375,9 @@ function AuthFormInner({ mode }: AuthFormProps) {
           lastName: data.lastName,
           username: data.username,
           phone: data.phone,
-          dateOfBirth: data.dateOfBirth,
           email: googleEmail || current.email || "",
           profileImage: googleProfileImage || current.profileImage || "",
+          ...academicPayload(data),
           ...(!current.leoId ? { leoId: generateLeoId(googleUid) } : {}),
           ...(!current.membershipStatus || !current.membershipType ? membership : {}),
         })
@@ -316,9 +389,9 @@ function AuthFormInner({ mode }: AuthFormProps) {
           username: data.username,
           email: googleEmail,
           phone: data.phone,
-          dateOfBirth: data.dateOfBirth,
           role: "member",
           profileImage: googleProfileImage,
+          ...academicPayload(data),
           ...membership,
         })
       }
@@ -359,9 +432,9 @@ function AuthFormInner({ mode }: AuthFormProps) {
         username: data.username,
         email: data.email,
         phone: data.phone,
-        dateOfBirth: data.dateOfBirth,
         role: "member",
         ...membershipFromJoinIntent(data.joinIntent),
+        ...academicPayload(data),
         ...(data.middleName ? { middleName: data.middleName } : {}),
       })
 
@@ -403,95 +476,154 @@ function AuthFormInner({ mode }: AuthFormProps) {
   return (
     <>
       <Dialog open={googleDialogOpen} onOpenChange={setGoogleDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Complete your profile</DialogTitle>
             <DialogDescription>
               {missingLabels.length > 0
                 ? `Please provide: ${missingLabels.join(", ")}.`
-                : "Please confirm your details."}
+                : "Confirm your personal and academic details."}
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={googleCompleteForm.handleSubmit(onGoogleCompleteSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <form onSubmit={googleCompleteForm.handleSubmit(onGoogleCompleteSubmit)} className="space-y-6">
+            <section className="space-y-4">
               <div>
-                <Label htmlFor="g_firstName">First Name</Label>
-                <Input id="g_firstName" {...googleCompleteForm.register("firstName")} disabled={isLoading} />
-                {googleCompleteForm.formState.errors.firstName && (
+                <p className="text-sm font-semibold">Personal information</p>
+                <p className="text-xs text-muted-foreground">Birthday is optional and used for club celebrations.</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="g_firstName">First Name</Label>
+                  <Input id="g_firstName" {...googleCompleteForm.register("firstName")} disabled={isLoading} />
+                  {googleCompleteForm.formState.errors.firstName && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {googleCompleteForm.formState.errors.firstName.message as string}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="g_lastName">Last Name</Label>
+                  <Input id="g_lastName" {...googleCompleteForm.register("lastName")} disabled={isLoading} />
+                  {googleCompleteForm.formState.errors.lastName && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {googleCompleteForm.formState.errors.lastName.message as string}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="g_username">Username</Label>
+                <Input id="g_username" {...googleCompleteForm.register("username")} disabled={isLoading} />
+                {googleCompleteForm.formState.errors.username && (
                   <p className="text-sm text-red-500 mt-1">
-                    {googleCompleteForm.formState.errors.firstName.message as string}
+                    {googleCompleteForm.formState.errors.username.message as string}
                   </p>
                 )}
               </div>
+
               <div>
-                <Label htmlFor="g_lastName">Last Name</Label>
-                <Input id="g_lastName" {...googleCompleteForm.register("lastName")} disabled={isLoading} />
-                {googleCompleteForm.formState.errors.lastName && (
+                <Label htmlFor="g_phone">Phone</Label>
+                <Input id="g_phone" type="tel" placeholder="+265 999 123 456" {...googleCompleteForm.register("phone")} disabled={isLoading} />
+                {googleCompleteForm.formState.errors.phone && (
+                  <p className="text-sm text-red-500 mt-1">{googleCompleteForm.formState.errors.phone.message as string}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="g_dob">Birthday <span className="text-xs font-normal text-muted-foreground">(optional)</span></Label>
+                <Input id="g_dob" type="date" {...googleCompleteForm.register("dateOfBirth")} disabled={isLoading} />
+              </div>
+
+              <div>
+                <Label>Are you already a Leo member?</Label>
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => googleCompleteForm.setValue("joinIntent", "joining", { shouldValidate: true })}
+                    className={`rounded-md border p-3 text-left text-sm ${
+                      googleCompleteForm.watch("joinIntent") === "joining"
+                        ? "border-leo-primary bg-orange-50"
+                        : "border-border bg-white"
+                    }`}
+                  >
+                    <span className="font-semibold">I am joining</span>
+                    <p className="mt-1 text-xs text-muted-foreground">Prospective member. Complete training after signup.</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => googleCompleteForm.setValue("joinIntent", "existing", { shouldValidate: true })}
+                    className={`rounded-md border p-3 text-left text-sm ${
+                      googleCompleteForm.watch("joinIntent") === "existing"
+                        ? "border-leo-primary bg-orange-50"
+                        : "border-border bg-white"
+                    }`}
+                  >
+                    <span className="font-semibold">Already a member</span>
+                    <p className="mt-1 text-xs text-muted-foreground">Existing Leo. Training is not required.</p>
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <section className="space-y-4">
+              <div>
+                <p className="text-sm font-semibold">Academic information</p>
+                <p className="text-xs text-muted-foreground">Membership ends after graduation, so this helps the club plan ahead.</p>
+              </div>
+              <div>
+                <Label htmlFor="g_program">Program of study</Label>
+                <Input
+                  id="g_program"
+                  placeholder="e.g. Civil Engineering"
+                  {...googleCompleteForm.register("programOfStudy")}
+                  disabled={isLoading}
+                />
+                {googleCompleteForm.formState.errors.programOfStudy && (
                   <p className="text-sm text-red-500 mt-1">
-                    {googleCompleteForm.formState.errors.lastName.message as string}
+                    {googleCompleteForm.formState.errors.programOfStudy.message as string}
                   </p>
                 )}
               </div>
-            </div>
-
-            <div>
-              <Label htmlFor="g_username">Username</Label>
-              <Input id="g_username" {...googleCompleteForm.register("username")} disabled={isLoading} />
-              {googleCompleteForm.formState.errors.username && (
-                <p className="text-sm text-red-500 mt-1">
-                  {googleCompleteForm.formState.errors.username.message as string}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="g_phone">Phone</Label>
-              <Input id="g_phone" type="tel" placeholder="+265 999 123 456" {...googleCompleteForm.register("phone")} disabled={isLoading} />
-              {googleCompleteForm.formState.errors.phone && (
-                <p className="text-sm text-red-500 mt-1">{googleCompleteForm.formState.errors.phone.message as string}</p>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="g_dob">Date of Birth</Label>
-              <Input id="g_dob" type="date" {...googleCompleteForm.register("dateOfBirth")} disabled={isLoading} />
-              {googleCompleteForm.formState.errors.dateOfBirth && (
-                <p className="text-sm text-red-500 mt-1">
-                  {googleCompleteForm.formState.errors.dateOfBirth.message as string}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <Label>Are you already a Leo member?</Label>
-              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => googleCompleteForm.setValue("joinIntent", "joining", { shouldValidate: true })}
-                  className={`rounded-md border p-3 text-left text-sm ${
-                    googleCompleteForm.watch("joinIntent") === "joining"
-                      ? "border-leo-primary bg-orange-50"
-                      : "border-border bg-white"
-                  }`}
-                >
-                  <span className="font-semibold">I am joining</span>
-                  <p className="mt-1 text-xs text-muted-foreground">Prospective member. Complete training after signup.</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => googleCompleteForm.setValue("joinIntent", "existing", { shouldValidate: true })}
-                  className={`rounded-md border p-3 text-left text-sm ${
-                    googleCompleteForm.watch("joinIntent") === "existing"
-                      ? "border-leo-primary bg-orange-50"
-                      : "border-border bg-white"
-                  }`}
-                >
-                  <span className="font-semibold">Already a member</span>
-                  <p className="mt-1 text-xs text-muted-foreground">Existing Leo. Training is not required.</p>
-                </button>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="g_year">Year of study</Label>
+                  <select
+                    id="g_year"
+                    className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    {...googleCompleteForm.register("yearOfStudy")}
+                    disabled={isLoading}
+                  >
+                    <option value="">Select year</option>
+                    {STUDY_YEARS.map((year) => (
+                      <option key={year.value} value={year.value}>
+                        {year.label}
+                      </option>
+                    ))}
+                  </select>
+                  {googleCompleteForm.formState.errors.yearOfStudy && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {googleCompleteForm.formState.errors.yearOfStudy.message as string}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="g_grad">Expected graduation</Label>
+                  <Input
+                    id="g_grad"
+                    type="date"
+                    {...googleCompleteForm.register("expectedGraduationDate")}
+                    disabled={isLoading}
+                  />
+                  {googleCompleteForm.formState.errors.expectedGraduationDate && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {googleCompleteForm.formState.errors.expectedGraduationDate.message as string}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
+            </section>
 
             <DialogFooter>
               <Button type="submit" className="w-full bg-leo-primary hover:bg-leo-primary-dark text-white" disabled={isLoading}>
@@ -518,7 +650,7 @@ function AuthFormInner({ mode }: AuthFormProps) {
             {mode === "login"
               ? "Enter your credentials to access your account"
               : mode === "register"
-                ? "Fill in your details to join MUBAS Leo Club"
+                ? "Personal details, academic information, then a password"
                 : "Enter your email to receive a password reset link"}
           </CardDescription>
         </CardHeader>
@@ -595,143 +727,253 @@ function AuthFormInner({ mode }: AuthFormProps) {
         )}
 
         {mode === "register" && (
-          <form onSubmit={handleSubmit(onRegisterSubmit)} className="space-y-4">
-            <div>
-              <Label>Are you already a Leo member?</Label>
-              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <button
+          <form onSubmit={handleSubmit(onRegisterSubmit)} className="space-y-5">
+            <ol className="grid grid-cols-3 gap-2">
+              {registerSteps.map((step) => {
+                const Icon = step.icon
+                const active = registerStep === step.id
+                const done = registerStep > step.id
+                return (
+                  <li
+                    key={step.id}
+                    className={`rounded-md border px-2 py-2 text-center sm:px-3 sm:text-left ${
+                      active
+                        ? "border-leo-primary bg-orange-50"
+                        : done
+                          ? "border-emerald-200 bg-emerald-50"
+                          : "border-border bg-white"
+                    }`}
+                  >
+                    <p className="flex items-center justify-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-500 sm:justify-start">
+                      <Icon className="h-3.5 w-3.5" />
+                      {step.id}. {step.title}
+                    </p>
+                    <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">{step.caption}</p>
+                  </li>
+                )
+              })}
+            </ol>
+
+            {registerStep === 1 && (
+              <div className="space-y-4">
+                <div>
+                  <Label>Are you already a Leo member?</Label>
+                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => form.setValue("joinIntent", "joining", { shouldValidate: true })}
+                      className={`rounded-md border p-3 text-left text-sm ${
+                        form.watch("joinIntent") === "joining"
+                          ? "border-leo-primary bg-orange-50 text-neutral-900"
+                          : "border-border bg-white text-neutral-700"
+                      }`}
+                    >
+                      <span className="font-semibold">I am joining</span>
+                      <p className="mt-1 text-xs text-muted-foreground">Prospective member. You will complete training, then an admin approves you.</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => form.setValue("joinIntent", "existing", { shouldValidate: true })}
+                      className={`rounded-md border p-3 text-left text-sm ${
+                        form.watch("joinIntent") === "existing"
+                          ? "border-leo-primary bg-orange-50 text-neutral-900"
+                          : "border-border bg-white text-neutral-700"
+                      }`}
+                    >
+                      <span className="font-semibold">I am already a member</span>
+                      <p className="mt-1 text-xs text-muted-foreground">Existing Leo. You skip the new member training program.</p>
+                    </button>
+                  </div>
+                  {errors.joinIntent && <p className="text-sm text-red-500 mt-1">{errors.joinIntent.message as string}</p>}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input id="firstName" {...register("firstName")} disabled={isLoading} />
+                    {errors.firstName && <p className="text-sm text-red-500 mt-1">{errors.firstName.message as string}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="middleName">Middle Name <span className="text-[10px]">(Optional)</span></Label>
+                    <Input id="middleName" {...register("middleName")} disabled={isLoading} />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input id="lastName" {...register("lastName")} disabled={isLoading} />
+                    {errors.lastName && <p className="text-sm text-red-500 mt-1">{errors.lastName.message as string}</p>}
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="username">Username</Label>
+                  <Input id="username" {...register("username")} disabled={isLoading} />
+                  {errors.username && <p className="text-sm text-red-500 mt-1">{errors.username.message as string}</p>}
+                </div>
+
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" type="email" {...register("email")} disabled={isLoading} />
+                  {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email.message as string}</p>}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input id="phone" type="tel" placeholder="+265 999 123 456" {...register("phone")} disabled={isLoading} />
+                    {errors.phone && <p className="text-sm text-red-500 mt-1">{errors.phone.message as string}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="dateOfBirth">
+                      Birthday <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+                    </Label>
+                    <Input id="dateOfBirth" type="date" {...register("dateOfBirth")} disabled={isLoading} />
+                    <p className="mt-1 text-xs text-muted-foreground">Used for birthday celebrations with fellow Leos.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {registerStep === 2 && (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Academic details tell the club who is graduating when. Membership ends after graduation.
+                </p>
+                <div>
+                  <Label htmlFor="programOfStudy">Program of study</Label>
+                  <Input
+                    id="programOfStudy"
+                    placeholder="e.g. Civil Engineering"
+                    {...register("programOfStudy")}
+                    disabled={isLoading}
+                  />
+                  {errors.programOfStudy && (
+                    <p className="text-sm text-red-500 mt-1">{errors.programOfStudy.message as string}</p>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="yearOfStudy">Year of study</Label>
+                    <select
+                      id="yearOfStudy"
+                      className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      {...register("yearOfStudy")}
+                      disabled={isLoading}
+                    >
+                      <option value="">Select year</option>
+                      {STUDY_YEARS.map((year) => (
+                        <option key={year.value} value={year.value}>
+                          {year.label}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.yearOfStudy && (
+                      <p className="text-sm text-red-500 mt-1">{errors.yearOfStudy.message as string}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="expectedGraduationDate">Expected graduation date</Label>
+                    <Input
+                      id="expectedGraduationDate"
+                      type="date"
+                      {...register("expectedGraduationDate")}
+                      disabled={isLoading}
+                    />
+                    {errors.expectedGraduationDate && (
+                      <p className="text-sm text-red-500 mt-1">{errors.expectedGraduationDate.message as string}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {registerStep === 3 && (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showRegisterPassword ? "text" : "password"}
+                      {...register("password")}
+                      disabled={isLoading}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      onClick={() => setShowRegisterPassword((s) => !s)}
+                      aria-label={showRegisterPassword ? "Hide password" : "Show password"}
+                    >
+                      {showRegisterPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {errors.password && <p className="text-sm text-red-500 mt-1">{errors.password.message as string}</p>}
+                </div>
+
+                <div>
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showRegisterConfirmPassword ? "text" : "password"}
+                      {...register("confirmPassword")}
+                      disabled={isLoading}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      onClick={() => setShowRegisterConfirmPassword((s) => !s)}
+                      aria-label={showRegisterConfirmPassword ? "Hide password" : "Show password"}
+                    >
+                      {showRegisterConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {errors.confirmPassword && (
+                    <p className="text-sm text-red-500 mt-1">{errors.confirmPassword.message as string}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2 sm:flex-row">
+              {registerStep > 1 && (
+                <Button
                   type="button"
-                  onClick={() => form.setValue("joinIntent", "joining", { shouldValidate: true })}
-                  className={`rounded-md border p-3 text-left text-sm ${
-                    form.watch("joinIntent") === "joining"
-                      ? "border-leo-primary bg-orange-50 text-neutral-900"
-                      : "border-border bg-white text-neutral-700"
-                  }`}
-                >
-                  <span className="font-semibold">I am joining</span>
-                  <p className="mt-1 text-xs text-muted-foreground">Prospective member. You will complete training, then an admin approves you.</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => form.setValue("joinIntent", "existing", { shouldValidate: true })}
-                  className={`rounded-md border p-3 text-left text-sm ${
-                    form.watch("joinIntent") === "existing"
-                      ? "border-leo-primary bg-orange-50 text-neutral-900"
-                      : "border-border bg-white text-neutral-700"
-                  }`}
-                >
-                  <span className="font-semibold">I am already a member</span>
-                  <p className="mt-1 text-xs text-muted-foreground">Existing Leo. You skip the new member training program.</p>
-                </button>
-              </div>
-              {errors.joinIntent && <p className="text-sm text-red-500 mt-1">{errors.joinIntent.message as string}</p>}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="firstName">First Name</Label>
-                <Input id="firstName" {...register("firstName")} disabled={isLoading} />
-                {errors.firstName && <p className="text-sm text-red-500 mt-1">{errors.firstName.message as string}</p>}
-              </div>
-              <div>
-                <Label htmlFor="middleName">Middle Name <span className="text-[10]">(Optional)</span></Label>
-                <Input id="middleName" {...register("middleName")} disabled={isLoading} />
-              </div>
-              <div>
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input id="lastName" {...register("lastName")} disabled={isLoading} />
-                {errors.lastName && <p className="text-sm text-red-500 mt-1">{errors.lastName.message as string}</p>}
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="username">Username</Label>
-              <Input id="username" {...register("username")} disabled={isLoading} />
-              {errors.username && <p className="text-sm text-red-500 mt-1">{errors.username.message as string}</p>}
-            </div>
-
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" {...register("email")} disabled={isLoading} />
-              {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email.message as string}</p>}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="phone">Phone</Label>
-                <Input id="phone" type="tel" placeholder="+265 999 123 456" {...register("phone")} disabled={isLoading} />
-                {errors.phone && <p className="text-sm text-red-500 mt-1">{errors.phone.message as string}</p>}
-              </div>
-
-              <div>
-                <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                <Input id="dateOfBirth" type="date" {...register("dateOfBirth")} disabled={isLoading} />
-                {errors.dateOfBirth && (
-                  <p className="text-sm text-red-500 mt-1">{errors.dateOfBirth.message as string}</p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showRegisterPassword ? "text" : "password"}
-                  {...register("password")}
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={() => setRegisterStep((step) => Math.max(1, step - 1))}
                   disabled={isLoading}
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  onClick={() => setShowRegisterPassword((s) => !s)}
-                  aria-label={showRegisterPassword ? "Hide password" : "Show password"}
                 >
-                  {showRegisterPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              {errors.password && <p className="text-sm text-red-500 mt-1">{errors.password.message as string}</p>}
-            </div>
-
-            <div>
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <div className="relative">
-                <Input
-                  id="confirmPassword"
-                  type={showRegisterConfirmPassword ? "text" : "password"}
-                  {...register("confirmPassword")}
-                  disabled={isLoading}
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  onClick={() => setShowRegisterConfirmPassword((s) => !s)}
-                  aria-label={showRegisterConfirmPassword ? "Hide password" : "Show password"}
-                >
-                  {showRegisterConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              {errors.confirmPassword && (
-                <p className="text-sm text-red-500 mt-1">{errors.confirmPassword.message as string}</p>
+                  Back
+                </Button>
               )}
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-leo-primary hover:bg-leo-primary-dark text-white"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating account...
-                </>
+              {registerStep < 3 ? (
+                <Button
+                  type="button"
+                  className="w-full bg-leo-primary hover:bg-leo-primary-dark text-white sm:flex-1"
+                  onClick={goToNextRegisterStep}
+                  disabled={isLoading}
+                >
+                  Continue
+                </Button>
               ) : (
-                "Create Account"
+                <Button
+                  type="submit"
+                  className="w-full bg-leo-primary hover:bg-leo-primary-dark text-white sm:flex-1"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating account...
+                    </>
+                  ) : (
+                    "Create Account"
+                  )}
+                </Button>
               )}
-            </Button>
+            </div>
              <Button type="button" variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
               <GoogleIcon className="mr-2 h-4 w-4" />
               Continue with Google

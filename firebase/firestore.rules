@@ -26,8 +26,12 @@ service cloud.firestore {
         && request.resource.data.username is string
         && request.resource.data.leoId is string;
 
-      allow get: if isOwner(userId) || isAdminOrLeader();
+      allow get: if signedIn() || isOwner(userId) || isAdminOrLeader()
+        || (resource.data.executiveStatus == 'current' && resource.data.position is string);
+
+      allow list: if signedIn();
       allow list: if isAdminOrLeader();
+      allow list: if resource.data.executiveStatus == 'current' && resource.data.position is string;
 
       allow update: if isAdminOrLeader();
 
@@ -36,7 +40,10 @@ service cloud.firestore {
         && request.resource.data.role == 'member'
         && (!('leoId' in resource.data) || request.resource.data.leoId == resource.data.leoId)
         && (!('membershipType' in resource.data) || request.resource.data.membershipType == resource.data.membershipType)
-        && (!('membershipStatus' in resource.data) || request.resource.data.membershipStatus == resource.data.membershipStatus);
+        && (!('membershipStatus' in resource.data) || request.resource.data.membershipStatus == resource.data.membershipStatus)
+        && request.resource.data.get('position', '') == resource.data.get('position', '')
+        && request.resource.data.get('executiveStatus', '') == resource.data.get('executiveStatus', '')
+        && request.resource.data.get('executiveTerm', '') == resource.data.get('executiveTerm', '');
 
       // Prospective members may graduate after finishing every module quiz.
       allow update: if isOwner(userId)
@@ -105,6 +112,11 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(['currentAmount', 'updatedAt']);
     }
 
+    match /specialOffers/{offerId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminOrLeader();
+    }
+
     match /orders/{orderId} {
       allow read: if isAdminOrLeader()
         || (signedIn() && request.auth.uid == resource.data.userId)
@@ -131,6 +143,16 @@ service cloud.firestore {
       allow read: if signedIn() && request.auth.uid == resource.data.userId;
       allow create, update: if isAdminOrLeader();
       allow delete: if false;
+    }
+
+    match /birthdayPosts/{postId} {
+      allow read: if signedIn();
+      allow create, delete, update: if false;
+    }
+
+    match /birthdayCalendar/{userId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdminOrLeader() || isOwner(userId);
     }
 
     match /membershipFees/{feeId} {

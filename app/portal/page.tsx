@@ -22,18 +22,25 @@ import { useAuth } from "@/lib/hooks/use-auth"
 import { useEvents } from "@/lib/hooks/use-events"
 import { useMyDonations } from "@/lib/hooks/use-donations"
 import { useMembershipFees } from "@/lib/hooks/use-membership-fees"
-import { PromoCarousel } from "@/components/shop/promo-carousel"
+import { BirthdayStatusRail } from "@/components/portal/birthday-status-rail"
+import { EventSpotlightRow } from "@/components/portal/event-spotlight-row"
 import { canAccessAdmin } from "@/components/portal/nav-config"
-import { promoSlides } from "@/lib/media"
 import { SAMPLE_PAYMENTS } from "@/lib/payments/defaults"
 import { donationToRecord, feeToRecord, paymentTotals } from "@/lib/payments/receipt"
 import { formatDate, formatMoney, greetingForHour } from "@/lib/utils/format"
+import { useBirthdayCalendar } from "@/lib/hooks/use-birthday-posts"
+import { usePlatformSettings } from "@/lib/hooks/use-settings"
+import { todayBirthdays, upcomingBirthdays } from "@/lib/content/academic"
+import { birthdayCalendarHref, celebrationEntries } from "@/lib/content/birthdays"
+import { BirthdayCelebrationCard } from "@/components/portal/birthday-celebration-card"
 
 export default function PortalDashboard() {
   const { user } = useAuth()
   const { data: events } = useEvents()
   const { data: donations = [] } = useMyDonations(user?.id, user?.email)
   const { data: fees = [] } = useMembershipFees(user?.id, true)
+  const { data: settings } = usePlatformSettings()
+  const { data: birthdayEntries = [] } = useBirthdayCalendar()
   const now = new Date()
   const isProspectiveLeo = user?.membershipType === "prospective-leo"
   const isLeo = user?.membershipType === "leo"
@@ -45,6 +52,24 @@ export default function PortalDashboard() {
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .slice(0, 3)
   }, [events])
+
+  const showBirthdays = settings?.notifications.birthdayNotifications !== false
+  const celebrationList = useMemo(
+    () => (showBirthdays ? celebrationEntries(birthdayEntries, user) : []),
+    [birthdayEntries, showBirthdays, user],
+  )
+  const todayCelebrations = useMemo(() => todayBirthdays(celebrationList, now), [celebrationList, now])
+  const upcomingCelebrations = useMemo(() => {
+    const all = upcomingBirthdays(celebrationList, now, 60, user?.id ? [user.id] : []).filter(
+      (birthday) => !birthday.isToday,
+    )
+    const mine = all.find((birthday) => birthday.memberId === user?.id)
+    const rest = all.filter((birthday) => birthday.memberId !== user?.id).slice(0, mine ? 4 : 5)
+    return mine ? [mine, ...rest].sort((a, b) => a.daysAway - b.daysAway) : rest
+  }, [celebrationList, now, user?.id])
+  const myBirthday =
+    upcomingCelebrations.find((birthday) => birthday.memberId === user?.id) ||
+    todayCelebrations.find((birthday) => birthday.memberId === user?.id)
 
   const paymentRecords = useMemo(() => {
     const live = [
@@ -144,7 +169,8 @@ export default function PortalDashboard() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <PromoCarousel slides={promoSlides} />
+          <BirthdayStatusRail birthdays={showBirthdays ? todayCelebrations : []} viewerId={user?.id} />
+          <EventSpotlightRow events={events} />
 
           <Card className="rounded-md border-none bg-white shadow-sm">
             <CardContent>
@@ -218,6 +244,47 @@ export default function PortalDashboard() {
               )}
             </CardContent>
           </Card>
+
+          {showBirthdays ? (
+            <Card className="rounded-md border-none bg-white shadow-sm">
+              <CardContent>
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="font-semibold">Upcoming birthdays</h2>
+                  <Link
+                    href={myBirthday ? birthdayCalendarHref(myBirthday.memberId, myBirthday.nextDate) : "/portal/calendar"}
+                    className="text-sm font-medium text-leo-primary"
+                  >
+                    Calendar
+                  </Link>
+                </div>
+                {upcomingCelebrations.length === 0 ? (
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">No birthday celebrations in the next 60 days.</p>
+                    {user && !user.dateOfBirth ? (
+                      <Link href="/portal/profile" className="text-sm font-medium text-leo-primary">
+                        Add your birthday to celebrate
+                      </Link>
+                    ) : user?.birthdayVisible === false ? (
+                      <Link href="/portal/profile" className="text-sm font-medium text-leo-primary">
+                        Show your birthday on the calendar
+                      </Link>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {upcomingCelebrations.map((birthday) => (
+                      <BirthdayCelebrationCard
+                        key={birthday.memberId}
+                        birthday={birthday}
+                        viewerId={user?.id}
+                        compact
+                      />
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card className="rounded-md border-none bg-white shadow-sm">
             <CardContent>

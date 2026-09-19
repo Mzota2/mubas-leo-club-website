@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Facebook, Twitter, Instagram, Mail, Phone, MapPin, Heart } from "lucide-react"
+import { Facebook, Twitter, Instagram, Mail, Phone, MapPin, Heart, Linkedin } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 
 export function PublicFooter() {
@@ -16,7 +16,7 @@ export function PublicFooter() {
             </p>
             <div className="flex gap-3">
               <a
-                href="https://facebook.com"
+                href="https://web.facebook.com/profile.php?id=100089882272504"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-leo-primary hover:text-white transition-all duration-300"
@@ -25,16 +25,16 @@ export function PublicFooter() {
                 <Facebook className="h-5 w-5" />
               </a>
               <a
-                href="https://twitter.com"
+                href="https://www.linkedin.com/in/mubas-leo-club-a75280380/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-leo-primary hover:text-white transition-all duration-300"
                 aria-label="Twitter"
               >
-                <Twitter className="h-5 w-5" />
+                <Linkedin className="h-5 w-5" />
               </a>
               <a
-                href="https://instagram.com"
+                href="https://www.instagram.com/mubasleoclub/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-leo-primary hover:text-white transition-all duration-300"
@@ -94,10 +94,10 @@ export function PublicFooter() {
               <li className="flex items-start gap-3">
                 <Mail className="h-5 w-5 text-leo-primary mt-0.5 flex-shrink-0" />
                 <a
-                  href="mailto:info@mubasleoclub.org"
+                  href="mailto:mubasleoclub@gmail.com"
                   className="hover:text-leo-primary transition-colors text-gray-400"
                 >
-                  info@mubasleoclub.org
+                  mubasleoclub@gmail.com
                 </a>
               </li>
               <li className="flex items-start gap-3">

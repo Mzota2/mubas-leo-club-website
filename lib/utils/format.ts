@@ -35,6 +35,13 @@ export function formatRelativeTime(value?: string | null) {
   return formatDistanceToNow(date, { addSuffix: true })
 }
 
+export function withLeoTitle(name?: string | null) {
+  const trimmed = (name ?? "").trim()
+  if (!trimmed || trimmed === "Unknown") return trimmed || "Unknown"
+  if (/^leo\b/i.test(trimmed)) return trimmed.replace(/^leo\b/i, "Leo")
+  return `Leo ${trimmed}`
+}
+
 export function displayName(person?: {
   firstName?: string
   middleName?: string
@@ -42,8 +49,10 @@ export function displayName(person?: {
   name?: string
 } | null) {
   if (!person) return "Unknown"
-  if (person.name) return person.name
-  return [person.firstName, person.middleName, person.lastName].filter(Boolean).join(" ").trim() || "Unknown"
+  const raw = person.name
+    ? person.name
+    : [person.firstName, person.middleName, person.lastName].filter(Boolean).join(" ").trim()
+  return withLeoTitle(raw || "Unknown")
 }
 
 export function greetingForHour(date = new Date()) {

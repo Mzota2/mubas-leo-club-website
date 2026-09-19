@@ -57,12 +57,19 @@ export async function POST(request: Request) {
     }
 
     if (body.purpose === "order") {
-      if (!body.userId) {
-        return NextResponse.json({ success: false, error: "A signed-in member is required" }, { status: 400 })
+      const email = String(body.email || "").trim()
+      const shippingAddress = String(body.shippingAddress || "").trim()
+      const customerName = String(body.customerName || `${body.firstName ?? ""} ${body.lastName ?? ""}`.trim())
+      const phone = String(body.phone || "").trim()
+      if (!email || !shippingAddress || !customerName || !phone) {
+        return NextResponse.json(
+          { success: false, error: "Name, email, phone, and delivery address are required" },
+          { status: 400 },
+        )
       }
       const now = new Date().toISOString()
       await createOrder({
-        userId: body.userId,
+        userId: body.userId || "guest",
         items: Array.isArray(body.items) ? body.items : [],
         subtotal: Number(body.subtotal) || Number(body.amount),
         deliveryFee: Number(body.deliveryFee) || 0,
@@ -72,10 +79,10 @@ export async function POST(request: Request) {
         paymentMethod: "paychangu",
         paymentStatus: "pending",
         txRef,
-        customerName: body.customerName || `${body.firstName ?? ""} ${body.lastName ?? ""}`.trim(),
-        customerEmail: body.email,
-        phone: body.phone,
-        shippingAddress: body.shippingAddress || "",
+        customerName,
+        customerEmail: email,
+        phone,
+        shippingAddress,
         createdAt: now,
         updatedAt: now,
       })

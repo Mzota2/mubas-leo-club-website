@@ -6,29 +6,45 @@ import { ChevronRight } from "lucide-react"
 import { ShopSearch } from "@/components/shop/shop-search"
 import { ShopTopBar } from "@/components/shop/shop-top-bar"
 import { ProductArt } from "@/components/shop/product-art"
-import { PromoCarousel } from "@/components/shop/promo-carousel"
+import { SpecialOffersCarousel } from "@/components/shop/special-offers-carousel"
 import { portalCanvasTitle } from "@/components/portal/styles"
 import { getProductsByCategory, shopCategories, shopProducts } from "@/lib/shop/catalog"
-import { promoSlides } from "@/lib/media"
+import { offerIdFromProductId, offerToShopProduct } from "@/lib/shop/offers"
+import { useSpecialOffers } from "@/lib/hooks/use-special-offers"
 import { formatMoney } from "@/lib/utils/format"
 
 export default function ShopPage() {
   const [query, setQuery] = useState("")
+  const { data: offers = [] } = useSpecialOffers(true)
+
+  const offerProducts = useMemo(() => offers.map(offerToShopProduct), [offers])
 
   const visibleProducts = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return shopProducts
-    return shopProducts.filter(
-      (product) =>
-        product.name.toLowerCase().includes(q) ||
-        product.hashtag.toLowerCase().includes(q) ||
-        product.category.toLowerCase().includes(q),
-    )
-  }, [query])
+    const catalog = q
+      ? shopProducts.filter(
+          (product) =>
+            product.name.toLowerCase().includes(q) ||
+            product.hashtag.toLowerCase().includes(q) ||
+            product.category.toLowerCase().includes(q),
+        )
+      : shopProducts
+    const matchingOffers = q
+      ? offerProducts.filter(
+          (product) =>
+            product.name.toLowerCase().includes(q) ||
+            product.hashtag.toLowerCase().includes(q) ||
+            product.description.toLowerCase().includes(q),
+        )
+      : []
+    return [...matchingOffers, ...catalog]
+  }, [offerProducts, query])
 
   const filteredCategories = useMemo(() => {
     if (!query.trim()) return shopCategories
-    return shopCategories.filter((category) => getProductsByCategory(category.id).some((product) => visibleProducts.includes(product)))
+    return shopCategories.filter((category) =>
+      getProductsByCategory(category.id).some((product) => visibleProducts.includes(product)),
+    )
   }, [query, visibleProducts])
 
   return (
@@ -36,7 +52,7 @@ export default function ShopPage() {
       <ShopTopBar title="Shop Now" />
       <ShopSearch value={query} onChange={setQuery} />
 
-      {!query.trim() ? <PromoCarousel slides={promoSlides} /> : null}
+      {!query.trim() ? <SpecialOffersCarousel offers={offers} /> : null}
 
       <section className="space-y-3">
         <h2 className={`font-semibold ${portalCanvasTitle}`}>Categories</h2>
@@ -67,19 +83,22 @@ export default function ShopPage() {
       <section className="space-y-3">
         <h2 className={`font-semibold ${portalCanvasTitle}`}>In the shop</h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {visibleProducts.map((product) => (
-            <Link
-              key={product.id}
-              href={`/portal/shop/products/${product.id}`}
-              className="overflow-hidden rounded-md bg-white shadow-sm"
-            >
-              <ProductArt product={product} className="aspect-square" />
-              <div className="space-y-0.5 px-2.5 py-2">
-                <p className="line-clamp-1 text-sm font-medium text-neutral-900">{product.name}</p>
-                <p className="text-xs font-semibold text-leo-primary">{formatMoney(product.price)}</p>
-              </div>
-            </Link>
-          ))}
+          {visibleProducts.map((product) => {
+            const offerId = offerIdFromProductId(product.id)
+            return (
+              <Link
+                key={product.id}
+                href={offerId ? `/portal/shop/offers/${offerId}` : `/portal/shop/products/${product.id}`}
+                className="overflow-hidden rounded-md bg-white shadow-sm"
+              >
+                <ProductArt product={product} className="aspect-square" />
+                <div className="space-y-0.5 px-2.5 py-2">
+                  <p className="line-clamp-1 text-sm font-medium text-neutral-900">{product.name}</p>
+                  <p className="text-xs font-semibold text-leo-primary">{formatMoney(product.price)}</p>
+                </div>
+              </Link>
+            )
+          })}
         </div>
       </section>
     </div>

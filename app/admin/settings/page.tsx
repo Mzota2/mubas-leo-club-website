@@ -138,8 +138,10 @@ export default function AdminSettingsPage() {
             </div>
             <div className="flex items-start justify-between gap-3 rounded-md border border-border/60 p-4">
               <div>
-                <Label>Birthday notifications</Label>
-                <p className="text-sm text-muted-foreground">Notify members of birthdays</p>
+                <Label>Birthday celebrations</Label>
+                <p className="text-sm text-muted-foreground">
+                  Show upcoming birthdays on the portal sidebar and calendar. Birthdays today appear automatically as statuses in the portal carousel. Members customize their style in Profile.
+                </p>
               </div>
               <Switch checked={birthdayNotifications} onCheckedChange={setBirthdayNotifications} disabled={isLoading} />
             </div>

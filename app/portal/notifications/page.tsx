@@ -1,14 +1,18 @@
 "use client"
 
+import Link from "next/link"
+import type { ReactNode } from "react"
 import { useNotifications, useMarkNotificationRead } from "@/lib/hooks/use-notifications"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Bell, Cake, Calendar, Megaphone } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PortalPageHeader } from "@/components/portal/page-header"
 import { portalTabsListClass, portalTabsTriggerClass } from "@/components/portal/styles"
+import type { Notification } from "@/lib/types"
 
 export default function NotificationsPage() {
   const { data: notifications, isLoading } = useNotifications()
@@ -71,27 +75,13 @@ export default function NotificationsPage() {
             </>
           ) : unreadNotifications && unreadNotifications.length > 0 ? (
             unreadNotifications.map((notification) => (
-              <Card
+              <NotificationCard
                 key={notification.id}
-                className="bg-white/90 border-l-4 border-l-[#F59E0B] hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => markAsRead.mutate(notification.id)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex gap-3">
-                    <div className="flex-shrink-0">{getNotificationIcon(notification.type)}</div>
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between mb-1">
-                        <h3 className="font-semibold text-sm">{notification.title}</h3>
-                        <Badge className="bg-[#F59E0B] text-white border-none text-xs">New</Badge>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">{notification.message}</p>
-                      <p className="text-xs text-gray-500">
-                        {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                notification={notification}
+                unread
+                icon={getNotificationIcon(notification.type)}
+                onOpen={() => markAsRead.mutate(notification.id)}
+              />
             ))
           ) : (
             <Card className="p-12 text-center bg-white/90">
@@ -120,30 +110,15 @@ export default function NotificationsPage() {
             </>
           ) : notifications && notifications.length > 0 ? (
             notifications.map((notification) => (
-              <Card
+              <NotificationCard
                 key={notification.id}
-                className={`bg-white/90 hover:shadow-lg transition-shadow ${!notification.read ? "border-l-4 border-l-[#F59E0B]" : ""}`}
-              >
-                <CardContent className="p-4">
-                  <div className="flex gap-3">
-                    <div className="flex-shrink-0">{getNotificationIcon(notification.type)}</div>
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between mb-1">
-                        <h3 className={`text-sm ${notification.read ? "text-gray-700" : "font-semibold"}`}>
-                          {notification.title}
-                        </h3>
-                        {!notification.read && (
-                          <Badge className="bg-[#F59E0B] text-white border-none text-xs">New</Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">{notification.message}</p>
-                      <p className="text-xs text-gray-500">
-                        {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                notification={notification}
+                unread={!notification.read}
+                icon={getNotificationIcon(notification.type)}
+                onOpen={() => {
+                  if (!notification.read) markAsRead.mutate(notification.id)
+                }}
+              />
             ))
           ) : (
             <Card className="p-12 text-center bg-white/90">
@@ -154,5 +129,61 @@ export default function NotificationsPage() {
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+function NotificationCard({
+  notification,
+  unread,
+  icon,
+  onOpen,
+}: {
+  notification: Notification
+  unread?: boolean
+  icon: ReactNode
+  onOpen: () => void
+}) {
+  const content = (
+    <CardContent className="p-4">
+      <div className="flex gap-3">
+        {notification.memberImage || notification.memberName ? (
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={notification.memberImage} />
+            <AvatarFallback>{notification.memberName?.[0] ?? "L"}</AvatarFallback>
+          </Avatar>
+        ) : (
+          <div className="flex-shrink-0">{icon}</div>
+        )}
+        <div className="flex-1">
+          <div className="flex items-start justify-between mb-1">
+            <h3 className={`text-sm ${unread ? "font-semibold" : "text-gray-700"}`}>{notification.title}</h3>
+            {unread && <Badge className="bg-[#F59E0B] text-white border-none text-xs">New</Badge>}
+          </div>
+          <p className="text-sm text-gray-600 mb-2">{notification.message}</p>
+          {notification.href && notification.memberName && (
+            <p className="mb-2 text-xs font-medium text-[#F59E0B]">Open {notification.memberName} in My Club</p>
+          )}
+          <p className="text-xs text-gray-500">
+            {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+          </p>
+        </div>
+      </div>
+    </CardContent>
+  )
+
+  const className = `bg-white/90 hover:shadow-lg transition-shadow ${unread ? "border-l-4 border-l-[#F59E0B]" : ""}`
+
+  if (notification.href) {
+    return (
+      <Link href={notification.href} onClick={onOpen}>
+        <Card className={className}>{content}</Card>
+      </Link>
+    )
+  }
+
+  return (
+    <Card className={`${className} cursor-pointer`} onClick={onOpen}>
+      {content}
+    </Card>
   )
 }

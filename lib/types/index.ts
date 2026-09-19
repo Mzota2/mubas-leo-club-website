@@ -21,6 +21,13 @@ export interface MembershipFee {
   createdAt: string
 }
 
+export interface ExecutiveTerm {
+  position: string
+  term: string
+  status: "current" | "past"
+  order?: number
+}
+
 export interface User {
   id: string
   firstName: string
@@ -29,7 +36,13 @@ export interface User {
   username: string
   email: string
   phone: string
-  dateOfBirth: string
+  dateOfBirth?: string
+  birthdayStyle?: string
+  birthdayMessage?: string
+  birthdayVisible?: boolean
+  programOfStudy?: string
+  yearOfStudy?: string
+  expectedGraduationDate?: string
   profileImage?: string
   role: UserRole
   membershipType: MembershipType
@@ -37,6 +50,11 @@ export interface User {
   joinIntent?: JoinIntent
   membershipStatus?: MembershipStatus
   position?: string
+  executiveTerm?: string
+  executiveStatus?: "current" | "past"
+  executiveOrder?: number
+  executiveBio?: string
+  executiveTerms?: ExecutiveTerm[]
   region?: string
   zone?: string
   joinedDate?: string
@@ -69,7 +87,7 @@ export interface Product {
   id: string
   name: string
   description: string
-  category: "tshirt" | "golfshirt" | "cap" | "mug" | "calendar"
+  category: "tshirt" | "golfshirt" | "cap" | "mug" | "calendar" | "offer"
   price: number
   images: string[]
   stock: number
@@ -79,11 +97,26 @@ export interface Product {
   updatedAt: string
 }
 
+export interface SpecialOffer {
+  id: string
+  title: string
+  tagline?: string
+  description: string
+  image: string
+  price: number
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 export interface CartItem {
   productId: string
   quantity: number
   size?: string
   color?: string
+  name?: string
+  price?: number
+  image?: string
 }
 
 export interface OrderItem {
@@ -151,6 +184,21 @@ export interface Notification {
   message: string
   read: boolean
   createdAt: string
+  href?: string
+  memberId?: string
+  memberName?: string
+  memberImage?: string
+}
+
+export interface BirthdayCalendarEntry {
+  id: string
+  memberId: string
+  memberName: string
+  memberImage?: string
+  dateOfBirth: string
+  style?: string
+  message?: string
+  updatedAt: string
 }
 
 export interface Leader {
@@ -161,6 +209,7 @@ export interface Leader {
   image: string
   email: string
   phone?: string
+  order?: number
   socialMedia?: {
     facebook?: string
     twitter?: string

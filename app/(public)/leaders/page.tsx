@@ -4,21 +4,29 @@ import { Mail, Phone } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useLeaders } from "@/lib/hooks/use-leaders"
-import { DEFAULT_LEADERS, sortLeaders, withFallback } from "@/lib/content/defaults"
-import { media } from "@/lib/media"
+import { DEFAULT_LEADERS, withFallback } from "@/lib/content/defaults"
+import { sortPublicLeaders } from "@/lib/content/executives"
+import { withLeoTitle } from "@/lib/utils/format"
 import type { Leader } from "@/lib/types"
 
 function LeaderCard({ leader }: { leader: Leader }) {
-  const photo = leader.image || media.people.male
+  const titled = withLeoTitle(leader.name)
+  const initial = titled.replace(/^Leo\s+/i, "").trim().slice(0, 1) || "L"
 
   return (
     <Card className="rounded-md border-none shadow-sm hover:shadow-md">
       <CardContent className="p-6">
         <div className="relative mx-auto mb-4 h-32 w-32 overflow-hidden rounded-full bg-linear-to-br from-leo-primary to-leo-secondary">
-          <img src={photo} alt={leader.name} className="h-full w-full object-cover" />
+          {leader.image ? (
+            <img src={leader.image} alt={withLeoTitle(leader.name)} className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-3xl font-semibold text-white">
+              {initial}
+            </div>
+          )}
         </div>
         <div className="mb-4 text-center">
-          <h3 className="mb-1 text-xl font-bold">{leader.name}</h3>
+          <h3 className="mb-1 text-xl font-bold">{titled}</h3>
           <p className="font-medium text-leo-primary">{leader.position}</p>
         </div>
         {leader.bio ? <p className="mb-4 text-center text-sm leading-relaxed text-gray-600">{leader.bio}</p> : null}
@@ -33,7 +41,7 @@ function LeaderCard({ leader }: { leader: Leader }) {
           ) : null}
           {leader.phone ? (
             <div className="flex items-center gap-2 text-gray-600">
-              <Phone className="h-4 w-4 shrink-0" />
+              <Phone className="h-4 w-4" />
               <a href={`tel:${leader.phone}`} className="hover:text-leo-primary">
                 {leader.phone}
               </a>
@@ -47,7 +55,7 @@ function LeaderCard({ leader }: { leader: Leader }) {
 
 export default function LeadersPage() {
   const { data: leaders, isLoading } = useLeaders()
-  const list = sortLeaders(withFallback(leaders, DEFAULT_LEADERS))
+  const list = sortPublicLeaders(withFallback(leaders, DEFAULT_LEADERS))
 
   return (
     <div className="py-10 md:py-16">

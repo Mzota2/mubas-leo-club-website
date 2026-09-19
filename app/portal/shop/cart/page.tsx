@@ -6,15 +6,14 @@ import { ChevronLeft, Minus, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ProductArt } from "@/components/shop/product-art"
 import { useCartStore } from "@/lib/store/cart-store"
-import { getShopProduct, shopProducts } from "@/lib/shop/catalog"
 import { formatMoney } from "@/lib/utils/format"
 import { portalCanvasMuted, portalCanvasTitle } from "@/components/portal/styles"
-import { DELIVERY_FEE } from "@/lib/shop/checkout"
+import { cartLineToProduct, DELIVERY_FEE } from "@/lib/shop/checkout"
 
 export default function CartPage() {
   const router = useRouter()
   const { items, removeItem, updateQuantity, getTotalPrice, clearCart } = useCartStore()
-  const subtotal = getTotalPrice(shopProducts)
+  const subtotal = getTotalPrice()
   const total = subtotal + (items.length > 0 ? DELIVERY_FEE : 0)
 
   return (
@@ -45,7 +44,7 @@ export default function CartPage() {
         <>
           <div className="space-y-3">
             {items.map((item) => {
-              const product = getShopProduct(item.productId)
+              const product = cartLineToProduct(item)
               if (!product) return null
 
               return (

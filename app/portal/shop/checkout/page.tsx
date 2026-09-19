@@ -8,26 +8,30 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useCartStore } from "@/lib/store/cart-store"
-import { getShopProduct, shopProducts } from "@/lib/shop/catalog"
-import { buildOrderItems, DELIVERY_FEE, orderItemsTotal } from "@/lib/shop/checkout"
+import { buildOrderItems, cartLineToProduct, DELIVERY_FEE, GUEST_ORDER_USER_ID, orderItemsTotal } from "@/lib/shop/checkout"
 import { initiatePayment } from "@/lib/paychangu/client"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 import { formatMoney } from "@/lib/utils/format"
 import { portalCanvasMuted, portalCanvasTitle } from "@/components/portal/styles"
 
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+}
+
 export default function CheckoutPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { user, loading } = useAuth()
+  const { user } = useAuth()
   const { items, getTotalPrice } = useCartStore()
   const [fullName, setFullName] = useState("")
+  const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [address, setAddress] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
 
   const orderItems = useMemo(() => buildOrderItems(items), [items])
-  const subtotal = orderItems.length ? orderItemsTotal(orderItems) : getTotalPrice(shopProducts)
+  const subtotal = orderItems.length ? orderItemsTotal(orderItems) : getTotalPrice()
   const total = subtotal + DELIVERY_FEE
 
   useEffect(() => {
@@ -39,19 +43,23 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!user) return
     if (!fullName) setFullName(`${user.firstName ?? ""} ${user.lastName ?? ""}`.trim())
+    if (!email) setEmail(user.email ?? "")
     if (!phone) setPhone(user.phone ?? "")
-  }, [fullName, phone, user])
+  }, [email, fullName, phone, user])
 
   const handlePayment = async () => {
-    if (!user) {
-      toast({ title: "Sign in required", description: "Log in to complete checkout.", variant: "destructive" })
-      router.push("/auth/login")
-      return
-    }
-    if (!fullName.trim() || !phone.trim() || !address.trim()) {
+    if (!fullName.trim() || !email.trim() || !phone.trim() || !address.trim()) {
       toast({
         title: "Delivery details required",
-        description: "Enter your name, phone, and delivery address.",
+        description: "Enter your name, email, phone, and delivery address.",
+        variant: "destructive",
+      })
+      return
+    }
+    if (!isValidEmail(email)) {
+      toast({
+        title: "Valid email required",
+        description: "We need an email to send the payment receipt.",
         variant: "destructive",
       })
       return
@@ -66,12 +74,12 @@ export default function CheckoutPage() {
       const nameParts = fullName.trim().split(/\s+/)
       const result = await initiatePayment({
         amount: total,
-        email: user.email,
-        firstName: nameParts[0] || user.firstName,
-        lastName: nameParts.slice(1).join(" ") || user.lastName,
+        email: email.trim(),
+        firstName: nameParts[0] || "Guest",
+        lastName: nameParts.slice(1).join(" ") || "Shopper",
         currency: "MWK",
         purpose: "order",
-        userId: user.id,
+        userId: user?.id || GUEST_ORDER_USER_ID,
         customerName: fullName.trim(),
         phone: phone.trim(),
         shippingAddress: address.trim(),
@@ -100,7 +108,7 @@ export default function CheckoutPage() {
     }
   }
 
-  if (items.length === 0 || loading) {
+  if (items.length === 0) {
     return null
   }
 
@@ -114,7 +122,10 @@ export default function CheckoutPage() {
       </div>
 
       <div className="space-y-4 rounded-md bg-white p-4">
-        <h2 className="font-semibold">Delivery</h2>
+        <h2 className="font-semibold">Your details</h2>
+        <p className="text-sm text-neutral-600">
+          {user ? "Confirm where we should send this order." : "No account needed. Enter the details we need to deliver and receipt this order."}
+        </p>
         <div>
           <Label htmlFor="fullName">Full name</Label>
           <Input
@@ -122,6 +133,17 @@ export default function CheckoutPage() {
             value={fullName}
             onChange={(event) => setFullName(event.target.value)}
             placeholder="Your name"
+            className="mt-1 rounded-md"
+          />
+        </div>
+        <div>
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="you@email.com"
             className="mt-1 rounded-md"
           />
         </div>
@@ -137,12 +159,12 @@ export default function CheckoutPage() {
           />
         </div>
         <div>
-          <Label htmlFor="address">Address</Label>
+          <Label htmlFor="address">Delivery address</Label>
           <Textarea
             id="address"
             value={address}
             onChange={(event) => setAddress(event.target.value)}
-            placeholder="Delivery address"
+            placeholder="Street, area, city"
             rows={3}
             className="mt-1 rounded-md"
           />
@@ -152,7 +174,7 @@ export default function CheckoutPage() {
       <div className="space-y-3 rounded-md bg-white p-4">
         <h2 className="font-semibold">Order</h2>
         {items.map((item) => {
-          const product = getShopProduct(item.productId)
+          const product = cartLineToProduct(item)
           if (!product) return null
           return (
             <div key={`${item.productId}-${item.size ?? ""}-${item.color ?? ""}`} className="flex justify-between text-sm">

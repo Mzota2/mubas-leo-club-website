@@ -39,7 +39,7 @@ function AdminPaymentsContent() {
   const { data: donations, isLoading: donationsLoading } = useDonations()
   const { data: fees, isLoading: feesLoading } = useMembershipFees()
   const { data: orders, isLoading: ordersLoading } = useOrders()
-  const { data: users } = useUsers()
+  const { data: users } = useUsers(true)
   const [query, setQuery] = useState("")
   const [tab, setTab] = useState<"all" | PaymentKind>(parseTab(searchParams.get("tab")))
 

@@ -252,6 +252,31 @@ html {
   animation: fade-in 0.6s ease-out;
 }
 
+@keyframes offer-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.offer-marquee {
+  animation-name: offer-marquee;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.offers-marquee-wrap:hover .offer-marquee {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .offer-marquee {
+    animation: none;
+  }
+}
+
 @keyframes leo-balloon-up {
   0% {
     transform: translateY(110vh) rotate(-10deg);

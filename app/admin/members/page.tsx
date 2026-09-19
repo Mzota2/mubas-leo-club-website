@@ -21,6 +21,7 @@ import { emptyProgress, withWaiver } from "@/lib/training/progress"
 import { useToast } from "@/hooks/use-toast"
 import { displayName, formatDate } from "@/lib/utils/format"
 import { downloadCsv } from "@/lib/utils/csv"
+import { graduationStatus, yearOfStudyLabel } from "@/lib/content/academic"
 import type { User } from "@/lib/types"
 
 export default function MembersPage() {
@@ -67,7 +68,8 @@ export default function MembersPage() {
           user.username?.toLowerCase().includes(query) ||
           user.phone?.toLowerCase().includes(query) ||
           fullName.includes(query) ||
-          (user.leoId ?? "").toLowerCase().includes(query)
+          (user.leoId ?? "").toLowerCase().includes(query) ||
+          (user.programOfStudy ?? "").toLowerCase().includes(query)
         )
       })
     }
@@ -224,6 +226,10 @@ export default function MembersPage() {
       role: member.role,
       position: member.position,
       membershipStatus: member.membershipStatus,
+      programOfStudy: member.programOfStudy,
+      yearOfStudy: member.yearOfStudy,
+      expectedGraduationDate: member.expectedGraduationDate,
+      dateOfBirth: member.dateOfBirth,
       joinedDate: member.joinedDate ?? member.createdAt,
     }))
     downloadCsv(`leo-members-${Date.now()}.csv`, rows)
@@ -232,6 +238,8 @@ export default function MembersPage() {
   const prospectiveLeos = users?.filter((user) => user.membershipType === "prospective-leo") || []
   const leos = users?.filter((user) => user.membershipType === "leo") || []
   const pendingApprovals = users?.filter((user) => user.membershipStatus === "pending") || []
+  const graduatingSoon = users?.filter((user) => graduationStatus(user.expectedGraduationDate).tone === "amber") || []
+  const graduated = users?.filter((user) => graduationStatus(user.expectedGraduationDate).ended) || []
 
   return (
     <div className="space-y-6">
@@ -263,6 +271,14 @@ export default function MembersPage() {
           hint="Joining members waiting for review"
           icon={ShieldCheck}
           accent="orange"
+          loading={isLoading}
+        />
+        <AdminStatCard
+          title="Graduating soon"
+          value={graduatingSoon.length}
+          hint={`${graduated.length} already past graduation`}
+          icon={Sparkles}
+          accent="amber"
           loading={isLoading}
         />
       </div>
@@ -307,6 +323,8 @@ export default function MembersPage() {
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>Program</TableHead>
+                  <TableHead>Graduation</TableHead>
                   <TableHead>Position</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Joined</TableHead>
@@ -316,7 +334,7 @@ export default function MembersPage() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={9}>
+                    <TableCell colSpan={11}>
                       <div className="space-y-2 py-2">
                         <Skeleton className="h-10 w-full" />
                         <Skeleton className="h-10 w-full" />
@@ -326,7 +344,7 @@ export default function MembersPage() {
                   </TableRow>
                 ) : filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={11} className="py-10 text-center text-sm text-muted-foreground">
                       No members match this search.
                     </TableCell>
                   </TableRow>
@@ -348,6 +366,35 @@ export default function MembersPage() {
                         >
                           {member.membershipType === "leo" ? "Leo" : "Prospective"}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="min-w-40">
+                          <p className="font-medium">{member.programOfStudy || "—"}</p>
+                          <p className="text-xs text-muted-foreground">{yearOfStudyLabel(member.yearOfStudy)}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const status = graduationStatus(member.expectedGraduationDate)
+                          return (
+                            <div className="min-w-36">
+                              <p>{formatDate(member.expectedGraduationDate)}</p>
+                              <Badge
+                                className={
+                                  status.tone === "rose"
+                                    ? "mt-1 border-transparent bg-rose-100 text-rose-700"
+                                    : status.tone === "amber"
+                                      ? "mt-1 border-transparent bg-amber-100 text-amber-800"
+                                      : status.tone === "emerald"
+                                        ? "mt-1 border-transparent bg-emerald-100 text-emerald-700"
+                                        : "mt-1 border-transparent bg-neutral-100 text-neutral-600"
+                                }
+                              >
+                                {status.label}
+                              </Badge>
+                            </div>
+                          )
+                        })()}
                       </TableCell>
                       <TableCell>{member.position ?? "—"}</TableCell>
                       <TableCell>
@@ -427,6 +474,17 @@ export default function MembersPage() {
               <div className="grid gap-1">
                 <p className="text-sm text-muted-foreground">Name</p>
                 <p className="font-medium">{displayName(selectedUser)}</p>
+              </div>
+
+              <div className="grid gap-1 rounded-md border bg-neutral-50 p-3">
+                <p className="text-sm text-muted-foreground">Academic</p>
+                <p className="font-medium">{selectedUser.programOfStudy || "Not provided"}</p>
+                <p className="text-sm text-muted-foreground">
+                  {yearOfStudyLabel(selectedUser.yearOfStudy)} · Graduates {formatDate(selectedUser.expectedGraduationDate)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Membership should end after graduation. Status: {graduationStatus(selectedUser.expectedGraduationDate).label}.
+                </p>
               </div>
 
               <div className="grid gap-2">

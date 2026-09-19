@@ -63,7 +63,7 @@ export const DEFAULT_EVENTS: Event[] = [
 export const DEFAULT_LEADERS: Leader[] = [
   {
     id: "default-jane-banda",
-    name: "Jane Banda",
+    name: "Leo Jane Banda",
     position: "President",
     bio: "Dedicated leader with a vision for expanding our community impact and fostering youth leadership.",
     image: media.people.female,
@@ -71,7 +71,7 @@ export const DEFAULT_LEADERS: Leader[] = [
   },
   {
     id: "default-john-phiri",
-    name: "John Phiri",
+    name: "Leo John Phiri",
     position: "Vice President",
     bio: "Committed to organizing impactful service projects and building strong community partnerships.",
     image: media.people.male2,
@@ -79,7 +79,7 @@ export const DEFAULT_LEADERS: Leader[] = [
   },
   {
     id: "default-grace-chirwa",
-    name: "Grace Chirwa",
+    name: "Leo Grace Chirwa",
     position: "Secretary",
     bio: "Ensuring smooth operations and effective communication within the club and with external stakeholders.",
     image: media.people.female2,
@@ -120,8 +120,24 @@ const LEADER_POSITION_RANK = [
   "membership",
 ]
 
+export const EXECUTIVE_POSITIONS = [
+  "President",
+  "Vice President",
+  "Secretary",
+  "Treasurer",
+  "Membership Chair",
+  "Project Chair",
+  "Public Relations",
+  "Tail Twister",
+  "Lion Tamer",
+  "Advisor",
+] as const
+
 export function sortLeaders(leaders: Leader[]) {
   return [...leaders].sort((a, b) => {
+    const aManual = a.order ?? Number.POSITIVE_INFINITY
+    const bManual = b.order ?? Number.POSITIVE_INFINITY
+    if (aManual !== bManual) return aManual - bManual
     const aRank = LEADER_POSITION_RANK.findIndex((title) => a.position.toLowerCase().includes(title))
     const bRank = LEADER_POSITION_RANK.findIndex((title) => b.position.toLowerCase().includes(title))
     const aOrder = aRank === -1 ? LEADER_POSITION_RANK.length : aRank
