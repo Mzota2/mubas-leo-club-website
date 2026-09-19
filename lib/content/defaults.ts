@@ -1,7 +1,5 @@
 import { media } from "@/lib/media"
-import type { Event, Leader } from "@/lib/types"
-
-const now = new Date().toISOString()
+import type { DonationCause, Event, Leader } from "@/lib/types"
 
 export const EVENT_CATEGORY_LABELS: Record<Event["category"], string> = {
   health: "Health Causes",
@@ -11,70 +9,6 @@ export const EVENT_CATEGORY_LABELS: Record<Event["category"], string> = {
   fundraising: "Fundraising",
   social: "Social",
 }
-
-export const DEFAULT_EVENTS: Event[] = [
-  {
-    id: "default-blood-donation",
-    title: "Blood Donation Drive",
-    description: "Join us for our annual blood donation campaign at Community Hospital",
-    category: "health",
-    date: "2026-10-18",
-    time: "8:00 AM - 4:00 PM",
-    location: "Area 25 Community Hospital, Lilongwe",
-    image: media.posters.bloodDrive,
-    status: "upcoming",
-    attendees: [],
-    createdBy: "system",
-    createdAt: now,
-    updatedAt: now,
-  },
-  {
-    id: "default-changeover-bbq",
-    title: "Changeover BBQ Party",
-    description: "Celebrate the new Leo year with food, music, and fellowship.",
-    category: "social",
-    date: "2026-11-08",
-    time: "10:00 AM",
-    location: "Ndirande New Lines, LDP's Residence",
-    image: media.posters.bbq,
-    status: "upcoming",
-    attendees: [],
-    createdBy: "system",
-    createdAt: now,
-    updatedAt: now,
-  },
-  {
-    id: "default-sight-fundraiser",
-    title: "Walk for Sight Fundraiser",
-    description: "A two-week campaign supporting vision care for students in our community.",
-    category: "fundraising",
-    date: "2026-10-01",
-    endDate: "2026-10-14",
-    time: "",
-    location: "MUBAS Campus, Blantyre",
-    image: media.posters.bloodDrive,
-    status: "upcoming",
-    attendees: [],
-    createdBy: "system",
-    createdAt: now,
-    updatedAt: now,
-  },
-  {
-    id: "default-community-visit",
-    title: "Community Support Visit",
-    description: "Visiting people with special needs and supporting needy students",
-    category: "community",
-    date: "2025-03-29",
-    time: "8:00 AM - 11:00 AM",
-    location: "MUBAS Campus",
-    image: media.posters.specialNeeds,
-    status: "completed",
-    attendees: [],
-    createdBy: "system",
-    createdAt: now,
-    updatedAt: now,
-  },
-]
 
 export const DEFAULT_LEADERS: Leader[] = [
   {
@@ -155,11 +89,16 @@ export function sortLeaders(leaders: Leader[]) {
   })
 }
 
-export function eventImage(event: Pick<Event, "image" | "category">) {
-  if (event.image) return event.image
-  if (event.category === "health") return media.posters.bloodDrive
-  if (event.category === "social") return media.posters.bbq
-  if (event.category === "community") return media.posters.specialNeeds
-  if (event.category === "environment") return media.activities.planting[1]
-  return media.posters.meeting
+export function hasEventPoster(image?: string | null) {
+  const value = (image ?? "").trim()
+  if (!value) return false
+  return !value.toLowerCase().includes("placeholder")
+}
+
+export function eventImage(event: Pick<Event, "image">) {
+  return hasEventPoster(event.image) ? (event.image as string).trim() : ""
+}
+
+export function causeImage(cause: Pick<DonationCause, "image">) {
+  return hasEventPoster(cause.image) ? (cause.image as string).trim() : ""
 }

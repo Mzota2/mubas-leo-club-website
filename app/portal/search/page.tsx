@@ -6,8 +6,11 @@ import { useSearchParams } from "next/navigation"
 import { Calendar, Heart, Leaf, Plus, Search, ShoppingBag, Users } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useEvents } from "@/lib/hooks/use-events"
-import { featuredSearchEvents, searchPortal, type SearchHit } from "@/lib/portal/search"
+import { eventImage } from "@/lib/content/defaults"
+import { isLiveEvent } from "@/lib/content/events"
+import { searchPortal, type SearchHit } from "@/lib/portal/search"
 import { portalCanvasTitle } from "@/components/portal/styles"
+import type { Event } from "@/lib/types"
 
 const categories = [
   { title: "Health Causes", icon: Plus, color: "bg-[#EF4444]", href: "/portal/events?category=health" },
@@ -48,13 +51,18 @@ function SearchScreen() {
       {searching ? (
         <SearchResults query={query} hits={hits} />
       ) : (
-        <BrowseView />
+        <BrowseView events={events} />
       )}
     </div>
   )
 }
 
-function BrowseView() {
+function BrowseView({ events }: { events: Event[] }) {
+  const upcoming = [...events]
+    .filter((event) => isLiveEvent(event))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 10)
+
   return (
     <>
       <section>
@@ -64,21 +72,34 @@ function BrowseView() {
             View all
           </Link>
         </div>
-        <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
-          {featuredSearchEvents.map((event) => (
-            <Link
-              key={event.id}
-              href={event.href}
-              className="relative w-40 shrink-0 overflow-hidden rounded-md bg-white lg:w-52"
-            >
-              <img src={event.image} alt={event.title} className="h-52 w-full object-cover" />
-              <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent px-2.5 pb-2.5 pt-8">
-                <span className="block text-sm font-semibold text-white">{event.hashtag}</span>
-                <span className="mt-0.5 block text-xs text-white/90">{event.title}</span>
-              </span>
-            </Link>
-          ))}
-        </div>
+        {upcoming.length === 0 ? (
+          <p className="rounded-md bg-white px-3 py-6 text-sm text-neutral-600 shadow-sm">No upcoming events yet.</p>
+        ) : (
+          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
+            {upcoming.map((event) => {
+              const poster = eventImage(event)
+              return (
+                <Link
+                  key={event.id}
+                  href="/portal/events"
+                  className="relative w-40 shrink-0 overflow-hidden rounded-md bg-neutral-200 lg:w-52"
+                >
+                  {poster ? (
+                    <img src={poster} alt={event.title} className="h-52 w-full object-cover" />
+                  ) : (
+                    <span className="flex h-52 w-full items-center justify-center">
+                      <Calendar className="h-10 w-10 text-neutral-400" />
+                    </span>
+                  )}
+                  <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent px-2.5 pb-2.5 pt-8">
+                    <span className="block text-sm font-semibold text-white">{event.title}</span>
+                    <span className="mt-0.5 block text-xs text-white/90">{event.location}</span>
+                  </span>
+                </Link>
+              )
+            })}
+          </div>
+        )}
       </section>
 
       <section>

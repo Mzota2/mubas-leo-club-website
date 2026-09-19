@@ -200,7 +200,7 @@ export async function clearExecutiveAssignment(userId: string) {
 export async function getEvents(constraints: QueryConstraint[] = []) {
   const eventsQuery = query(collection(db, "events"), ...constraints)
   const eventsSnapshot = await getDocs(eventsQuery)
-  return eventsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Event)
+  return eventsSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as Event)
 }
 
 export async function getEvent(eventId: string): Promise<Event | null> {
@@ -354,13 +354,20 @@ export async function incrementDonationCauseAmount(causeId: string, amount: numb
 
 // Donation Cause operations
 export async function getDonationCauses(activeOnly: boolean = false) {
-  const constraints: QueryConstraint[] = [orderBy("createdAt", "desc")]
-  if (activeOnly) {
-    constraints.unshift(where("isActive", "==", true))
+  try {
+    const constraints: QueryConstraint[] = [orderBy("createdAt", "desc")]
+    if (activeOnly) {
+      constraints.unshift(where("isActive", "==", true))
+    }
+    const causesQuery = query(collection(db, "donationCauses"), ...constraints)
+    const causesSnapshot = await getDocs(causesQuery)
+    return causesSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as DonationCause)
+  } catch {
+    const snapshot = await getDocs(collection(db, "donationCauses"))
+    const rows = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as DonationCause)
+    const filtered = activeOnly ? rows.filter((cause) => cause.isActive) : rows
+    return filtered.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
   }
-  const causesQuery = query(collection(db, "donationCauses"), ...constraints)
-  const causesSnapshot = await getDocs(causesQuery)
-  return causesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as DonationCause)
 }
 
 export async function getDonationCause(causeId: string): Promise<DonationCause | null> {
@@ -370,19 +377,22 @@ export async function getDonationCause(causeId: string): Promise<DonationCause |
 }
 
 export async function createDonationCause(causeData: Omit<DonationCause, "id">) {
-  const docRef = await addDoc(collection(db, "donationCauses"), {
+  const docRef = await addDoc(collection(db, "donationCauses"), omitUndefined({
     ...causeData,
     createdAt: Timestamp.now().toDate().toISOString(),
     updatedAt: Timestamp.now().toDate().toISOString(),
-  })
+  } as Record<string, unknown>))
   return docRef.id
 }
 
 export async function updateDonationCause(causeId: string, causeData: Partial<DonationCause>) {
-  await updateDoc(doc(db, "donationCauses", causeId), {
-    ...causeData,
-    updatedAt: Timestamp.now().toDate().toISOString(),
-  })
+  await updateDoc(
+    doc(db, "donationCauses", causeId),
+    omitUndefined({
+      ...causeData,
+      updatedAt: Timestamp.now().toDate().toISOString(),
+    } as Record<string, unknown>),
+  )
 }
 
 export async function deleteDonationCause(causeId: string) {

@@ -13,14 +13,6 @@ export const media = {
     mugLeoThing: "/Assets/Merchandise/Mug2.jpeg",
     mugStacked: "/Assets/Merchandise/Mug3.webp",
   },
-  posters: {
-    valentines: "/Assets/Activities/valentines.jpeg",
-    bbq: "/Assets/Activities/PIC1.jpg",
-    womensDay: "/Assets/Activities/pic2.jpg",
-    specialNeeds: "/Assets/Activities/pic3.jpg",
-    bloodDrive: "/Assets/Activities/pic4.jpg",
-    meeting: "/Assets/Activities/meeting.jpeg",
-  },
   activities: {
     social: "/Assets/Activities/social-activity.jpeg",
     planting: [
@@ -70,43 +62,3 @@ export const media = {
     female2: "/professional-headshot-female-2.png",
   },
 } as const
-
-export type PromoSlide = {
-  id: string
-  title: string
-  image: string
-  href: string
-}
-
-export const promoSlides: PromoSlide[] = [
-  {
-    id: "valentines",
-    title: "Valentines Special",
-    image: media.posters.valentines,
-    href: "/portal/shop/category/mug",
-  },
-  {
-    id: "bbq",
-    title: "Changeover BBQ Party",
-    image: media.posters.bbq,
-    href: "/portal/events",
-  },
-  {
-    id: "blood",
-    title: "Blood Donation Drive",
-    image: media.posters.bloodDrive,
-    href: "/portal/events",
-  },
-  {
-    id: "womens-day",
-    title: "International Women's Day",
-    image: media.posters.womensDay,
-    href: "/portal/events",
-  },
-  {
-    id: "special-needs",
-    title: "Community Support Visit",
-    image: media.posters.specialNeeds,
-    href: "/portal/events",
-  },
-]

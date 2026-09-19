@@ -3,6 +3,7 @@ import { Calendar, MapPin, Users } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { eventStatusClass, eventStatusLabel, formatEventSchedule, resolveEventStatus } from "@/lib/content/events"
+import { eventImage } from "@/lib/content/defaults"
 import type { Event } from "@/lib/types"
 
 interface EventCardProps {
@@ -21,19 +22,20 @@ export function EventCard({ event, href }: EventCardProps) {
   }
 
   const status = resolveEventStatus(event)
+  const poster = eventImage(event)
 
   const content = (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow group">
       <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
-        {event.image ? (
+        {poster ? (
           <img
-            src={event.image || "/placeholder.svg"}
+            src={poster}
             alt={event.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Calendar className="h-16 w-16 text-gray-400" />
+          <div className="flex h-full items-center justify-center">
+            <Calendar className="h-10 w-10 text-gray-400" />
           </div>
         )}
         <Badge className={`absolute top-2 left-2 ${categoryColors[event.category]} text-white border-none`}>

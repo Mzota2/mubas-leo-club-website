@@ -23,6 +23,7 @@ import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { useCreateEvent, useDeleteEvent, useEvents, useUpdateEvent } from "@/lib/hooks/use-events"
+import { eventImage, hasEventPoster } from "@/lib/content/defaults"
 import type { Event } from "@/lib/types"
 import { Plus, Calendar, Pencil, Trash2, Upload, Users } from "lucide-react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
@@ -174,11 +175,15 @@ export default function EventsPage() {
     if (!formValues.description.trim()) return
     if (!formValues.date.trim()) return
     if (!formValues.location.trim()) return
+    if (!hasEventPoster(formValues.image)) {
+      setUploadError("Please upload a poster for this event.")
+      return
+    }
     if (isFundraising && !formValues.endDate.trim()) return
     if (isFundraising && formValues.endDate < formValues.date) return
 
     const createdBy = firebaseUser?.uid || "system"
-    const image = formValues.image?.trim() || "/placeholder-logo.png"
+    const image = formValues.image.trim()
     const status = resolveEventStatus({
       date: formValues.date,
       endDate: isFundraising ? formValues.endDate : undefined,
@@ -296,9 +301,17 @@ export default function EventsPage() {
                 return (
                 <div key={event.id} className="flex flex-col gap-3 rounded-md border border-border/60 bg-[#FBF9F6] p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex min-w-0 flex-1 items-start gap-3">
-                    {event.image ? (
-                      <img src={event.image} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" />
-                    ) : null}
+                    {eventImage(event) ? (
+                      <img
+                        src={eventImage(event)}
+                        alt=""
+                        className="h-20 w-16 shrink-0 rounded-md object-cover sm:h-24 sm:w-20"
+                      />
+                    ) : (
+                      <span className="flex h-20 w-16 shrink-0 items-center justify-center rounded-md bg-neutral-200 sm:h-24 sm:w-20">
+                        <Calendar className="h-6 w-6 text-neutral-400" />
+                      </span>
+                    )}
                     <div className="min-w-0">
                     <h3 className="font-semibold">{event.title}</h3>
                     <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
@@ -352,6 +365,45 @@ export default function EventsPage() {
                 id="description"
                 value={formValues.description}
                 onChange={(e) => setFormValues((v) => ({ ...v, description: e.target.value }))}
+                disabled={isBusy}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="poster">Event poster *</Label>
+              <label
+                htmlFor="poster"
+                className="flex cursor-pointer flex-col overflow-hidden rounded-md border border-dashed border-border bg-neutral-50 transition hover:border-leo-primary/50"
+              >
+                {hasEventPoster(formValues.image) ? (
+                  <img src={formValues.image} alt="Event poster preview" className="max-h-56 w-full bg-neutral-100 object-contain" />
+                ) : (
+                  <span className="flex flex-col items-center gap-2 px-4 py-8 text-center text-sm text-muted-foreground">
+                    <Upload className="h-6 w-6" />
+                    {uploading ? "Uploading poster..." : "Click to upload the event poster"}
+                  </span>
+                )}
+              </label>
+              <Input
+                id="poster"
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                disabled={isBusy}
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (file) void handleUploadPoster(file)
+                }}
+              />
+              {uploadError ? <p className="text-xs text-rose-600">{uploadError}</p> : null}
+              <Input
+                id="image"
+                placeholder="Or paste a poster image URL"
+                value={formValues.image}
+                onChange={(e) => {
+                  setUploadError("")
+                  setFormValues((v) => ({ ...v, image: e.target.value }))
+                }}
                 disabled={isBusy}
               />
             </div>
@@ -454,36 +506,6 @@ export default function EventsPage() {
               />
             </div>
 
-            <div className="grid gap-2">
-              <Label>Event poster</Label>
-              <Input
-                type="file"
-                accept="image/*"
-                disabled={isBusy}
-                onChange={(event) => {
-                  const file = event.target.files?.[0]
-                  if (file) void handleUploadPoster(file)
-                }}
-              />
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Upload className="h-3.5 w-3.5" />
-                {uploading ? "Uploading poster..." : "Upload a poster, or paste an image URL below."}
-              </div>
-              {uploadError ? <p className="text-xs text-rose-600">{uploadError}</p> : null}
-              <Input
-                id="image"
-                placeholder="https://"
-                value={formValues.image}
-                onChange={(e) => setFormValues((v) => ({ ...v, image: e.target.value }))}
-                disabled={isBusy}
-              />
-              {formValues.image ? (
-                <div className="overflow-hidden rounded-md border bg-neutral-100">
-                  <img src={formValues.image} alt="Event poster preview" className="max-h-48 w-full object-contain" />
-                </div>
-              ) : null}
-            </div>
-
             <div className="flex items-center justify-between rounded-md border px-3 py-2">
               <div>
                 <Label htmlFor="cancelled">Cancelled</Label>
@@ -508,7 +530,7 @@ export default function EventsPage() {
             <Button
               className="bg-leo-primary hover:bg-leo-primary-dark text-white"
               onClick={handleSubmit}
-              disabled={isBusy}
+              disabled={isBusy || !hasEventPoster(formValues.image)}
             >
               {selectedEvent ? "Save Changes" : "Create Event"}
             </Button>

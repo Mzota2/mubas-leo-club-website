@@ -5,14 +5,28 @@ import Image from "next/image"
 import { ArrowRight, Heart, Users, Target, Calendar, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { HeroCauseAds } from "@/components/public/hero-cause-ads"
+import { useDonationCauses } from "@/lib/hooks/use-donation-causes"
+import { useEvents } from "@/lib/hooks/use-events"
+import { eventImage } from "@/lib/content/defaults"
+import { formatEventSchedule, isLiveEvent } from "@/lib/content/events"
 import { media } from "@/lib/media"
 
 export default function HomePage() {
+  const { data: causes } = useDonationCauses(true)
+  const { data: events, isLoading: eventsLoading } = useEvents()
+  const liveCauses = causes ?? []
+  const upcomingEvents = (events ?? [])
+    .filter((event) => isLiveEvent(event))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 3)
 
   return (
     <div className="flex flex-col">
+      <div className="relative">
       {/* Hero Section with Video/Image Background */}
-      <section className="relative flex  max-h-[900px] items-center justify-center overflow-hidden py-24">
+      <section className={`relative flex min-h-[70vh] flex-col items-center justify-center overflow-hidden py-20 sm:pt-24 ${liveCauses.length > 0 ? "pb-28 sm:pb-24" : ""}`}>
         {/* Background Image/Video */}
         <div className="absolute inset-0 z-0">
           <Image
@@ -23,31 +37,20 @@ export default function HomePage() {
             priority
             quality={90}
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/70 z-10" />
-          <div className="absolute inset-0 bg-gradient-leo-primary opacity-70 z-10" />
-          {/* Optional: Uncomment to use video instead of image */}
-          {/* <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full h-full object-cover"
-          >
-            <source src="/hero-video.mp4" type="video/mp4" />
-          </video> */}
-         
+          <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/70 via-black/50 to-black/70" />
+          <div className="absolute inset-0 z-10 bg-gradient-leo-primary opacity-70" />
         </div>
 
         {/* Hero Content */}
-        <div className="container relative z-20 px-4 text-center text-white max-w-7xl mx-auto">
-          <div className="max-w-4xl mx-auto">
-            <h1 className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-bold mb-4 sm:mb-6 text-balance leading-tight animate-in fade-in slide-in-from-bottom-4 duration-1000">
+        <div className="container relative z-20 mx-auto flex max-w-7xl flex-1 items-center px-4 text-center text-white">
+          <div className="mx-auto max-w-4xl">
+            <h1 className="mb-4 text-3xl font-bold leading-tight text-balance animate-in fade-in slide-in-from-bottom-4 duration-1000 sm:mb-6 sm:text-5xl md:text-7xl lg:text-8xl">
               We are serving a world in need.
             </h1>
-            <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl mb-3 sm:mb-4 max-w-3xl mx-auto text-pretty font-light animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-300">
+            <p className="mx-auto mb-3 max-w-3xl text-lg font-light text-pretty animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-300 sm:mb-4 sm:text-xl md:text-2xl lg:text-3xl">
               One act of kindness at a time.
             </p>
-            <p className="text-sm sm:text-lg md:text-xl mb-8 sm:mb-10 max-w-2xl mx-auto text-white/90 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-500">
+            <p className="mx-auto mb-8 max-w-2xl text-sm text-white/90 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-500 sm:mb-10 sm:text-lg md:text-xl">
               Join MUBAS Leo Club in making a difference through community service and youth development
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-700">
@@ -69,16 +72,20 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Scroll Indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 hidden animate-bounce sm:block">
-          <div className="w-6 h-10 border-2 border-white/50 rounded-full flex items-start justify-center p-2">
-            <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+        {liveCauses.length === 0 ? (
+          <div className="absolute bottom-2 left-1/2 z-20 hidden -translate-x-1/2 animate-bounce sm:block">
+            <div className="flex h-10 w-6 items-start justify-center rounded-full border-2 border-white/50 p-2">
+              <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+            </div>
           </div>
-        </div>
+        ) : null}
       </section>
 
+      <HeroCauseAds causes={liveCauses} />
+      </div>
+
       {/* Statistics Section */}
-      <section className="py-12 md:py-20 bg-white">
+      <section className={`bg-white ${liveCauses.length > 0 ? "pt-28 pb-12 sm:pt-24 md:pt-32 md:pb-20" : "py-12 md:py-20"}`}>
         <div className="container px-4 max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-bold mb-4 text-gray-900">Making a Global Impact</h2>
@@ -274,50 +281,56 @@ export default function HomePage() {
             </Button>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                title: "Blood Donation Drive",
-                description: "Join us for our annual blood donation campaign at Community Hospital",
-                date: "July 15, 2025",
-                image: media.posters.bloodDrive,
-              },
-              {
-                title: "Environmental Clean-up",
-                description: "Community clean-up and tree planting initiative at Michiru Mountain",
-                date: "July 22, 2025",
-                image: media.activities.planting[1],
-              },
-              {
-                title: "Youth Empowerment Workshop",
-                description: "Leadership and skills development workshop for young people",
-                date: "August 5, 2025",
-                image: media.photos.youthLeadership,
-              },
-            ].map((event) => (
-              <Card key={event.title} className="overflow-hidden hover:shadow-2xl transition-all duration-300 border-0 shadow-lg group rounded-lg">
-                <div className="relative h-56 overflow-hidden">
-                  <Image
-                    src={event.image}
-                    alt={event.title}
-                    fill
-                    className="object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <div className="flex items-center gap-2 text-white/90 text-sm mb-2">
-                      <Calendar className="h-4 w-4" />
-                      <span>{event.date}</span>
+          {eventsLoading ? (
+            <div className="grid gap-8 md:grid-cols-3">
+              {[1, 2, 3].map((item) => (
+                <Card key={item} className="overflow-hidden rounded-lg border-0 shadow-lg">
+                  <Skeleton className="h-56 w-full" />
+                  <CardContent className="space-y-3 p-6">
+                    <Skeleton className="h-6 w-2/3" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : upcomingEvents.length > 0 ? (
+            <div className="grid gap-8 md:grid-cols-3">
+              {upcomingEvents.map((event) => {
+                const poster = eventImage(event)
+                return (
+                  <Card key={event.id} className="group overflow-hidden rounded-lg border-0 shadow-lg transition-all duration-300 hover:shadow-2xl">
+                    <div className="relative h-56 overflow-hidden bg-neutral-200">
+                      {poster ? (
+                        <img
+                          src={poster}
+                          alt={event.title}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <Calendar className="h-12 w-12 text-neutral-400" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                      <div className="absolute bottom-4 left-4 right-4">
+                        <div className="mb-2 flex items-center gap-2 text-sm text-white/90">
+                          <Calendar className="h-4 w-4" />
+                          <span>{formatEventSchedule(event)}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-bold mb-2 text-gray-900">{event.title}</h3>
-                  <p className="text-gray-600 leading-relaxed">{event.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    <CardContent className="p-6">
+                      <h3 className="mb-2 text-xl font-bold text-gray-900">{event.title}</h3>
+                      <p className="leading-relaxed text-gray-600">{event.description}</p>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="text-center text-gray-600">No upcoming events yet. Check back soon for the next Leo Club activity.</p>
+          )}
         </div>
       </section>
 

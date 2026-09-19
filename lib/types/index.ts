@@ -153,7 +153,7 @@ export interface DonationCause {
   id: string
   title: string
   description: string
-  image?: string
+  image: string
   targetAmount?: number
   currentAmount: number
   isActive: boolean

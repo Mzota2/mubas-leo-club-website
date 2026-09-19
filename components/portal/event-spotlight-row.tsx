@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Calendar, MapPin, X } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import { portalCanvasTitle } from "@/components/portal/styles"
-import { DEFAULT_EVENTS, EVENT_CATEGORY_LABELS, eventImage, withFallback } from "@/lib/content/defaults"
+import { EVENT_CATEGORY_LABELS, eventImage } from "@/lib/content/defaults"
 import { formatEventSchedule, isLiveEvent, resolveEventStatus } from "@/lib/content/events"
 import type { Event } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -26,15 +26,22 @@ function EventPosterCard({
   duplicate?: boolean
   onOpen: () => void
 }) {
+  const poster = eventImage(event)
   return (
     <button
       type="button"
       onClick={onOpen}
       tabIndex={duplicate ? -1 : undefined}
       aria-hidden={duplicate || undefined}
-      className="relative w-40 shrink-0 overflow-hidden rounded-md bg-gradient-to-t from-black/20 via-black/20 to-transparent text-left lg:w-52"
+      className="relative w-40 shrink-0 overflow-hidden rounded-md bg-neutral-200 text-left lg:w-52"
     >
-      <img src={eventImage(event)} alt={duplicate ? "" : event.title} className="h-52 w-full object-cover" />
+      {poster ? (
+        <img src={poster} alt={duplicate ? "" : event.title} className="h-52 w-full object-cover" />
+      ) : (
+        <span className="flex h-52 w-full items-center justify-center bg-neutral-200">
+          <Calendar className="h-10 w-10 text-neutral-400" />
+        </span>
+      )}
       <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent px-2.5 pb-2.5 pt-8">
         <span className="block text-sm font-semibold text-white">{eventTag(event)}</span>
         <span className="mt-0.5 block text-xs text-white/90">{event.title}</span>
@@ -45,11 +52,10 @@ function EventPosterCard({
 
 export function EventSpotlightRow({ events }: { events?: Event[] }) {
   const items = useMemo(() => {
-    const source = withFallback(events, DEFAULT_EVENTS)
-    const live = source
+    return [...(events ?? [])]
       .filter((event) => isLiveEvent(event))
       .sort((a, b) => a.date.localeCompare(b.date))
-    return (live.length > 0 ? live : source).slice(0, 10)
+      .slice(0, 10)
   }, [events])
   const [storyIndex, setStoryIndex] = useState<number | null>(null)
   const trackRef = useRef<HTMLDivElement>(null)
@@ -90,7 +96,34 @@ export function EventSpotlightRow({ events }: { events?: Event[] }) {
     return () => window.cancelAnimationFrame(frame)
   }, [animate, track.length])
 
-  if (items.length === 0) return null
+  if (events === undefined) {
+    return (
+      <section className="min-w-0">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className={`font-semibold ${portalCanvasTitle}`}>Upcoming events</h2>
+        </div>
+        <div className="flex gap-3">
+          {[1, 2, 3].map((item) => (
+            <div key={item} className="h-52 w-40 shrink-0 animate-pulse rounded-md bg-neutral-200 lg:w-52" />
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  if (items.length === 0) {
+    return (
+      <section className="min-w-0">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className={`font-semibold ${portalCanvasTitle}`}>Upcoming events</h2>
+          <Link href="/portal/events" className="rounded-md bg-white/90 px-2.5 py-1 text-sm font-medium text-neutral-800 lg:bg-transparent lg:px-0 lg:text-leo-primary">
+            View all
+          </Link>
+        </div>
+        <p className="rounded-md bg-white px-3 py-6 text-sm text-neutral-600 shadow-sm">No upcoming events yet.</p>
+      </section>
+    )
+  }
 
   return (
     <section className="min-w-0">
@@ -208,7 +241,11 @@ function EventStoryViewer({
             exit={{ opacity: 0, scale: 0.98, x: -28 }}
             transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
           >
-            <img src={eventImage(event)} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            {eventImage(event) ? (
+              <img src={eventImage(event)} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            ) : (
+              <div className="absolute inset-0 bg-neutral-800" />
+            )}
             <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/55 to-transparent" />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/85 via-black/45 to-transparent" />
 

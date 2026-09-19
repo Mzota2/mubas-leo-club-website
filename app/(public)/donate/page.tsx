@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { Suspense, useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,12 +11,22 @@ import { initiatePayment } from "@/lib/paychangu/client"
 import { useToast } from "@/hooks/use-toast"
 import { useDonationCauses } from "@/lib/hooks/use-donation-causes"
 import { useAuth } from "@/lib/hooks/use-auth"
-import { DEFAULT_DONATION_CAUSES } from "@/lib/payments/defaults"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
+import { causeImage } from "@/lib/content/defaults"
 
 export default function DonatePage() {
-  const [selectedCause, setSelectedCause] = useState<string | null>(null)
+  return (
+    <Suspense>
+      <DonatePageInner />
+    </Suspense>
+  )
+}
+
+function DonatePageInner() {
+  const searchParams = useSearchParams()
+  const causeFromUrl = searchParams.get("cause")
+  const [selectedCause, setSelectedCause] = useState<string | null>(causeFromUrl)
   const [amount, setAmount] = useState("")
   const [customAmount, setCustomAmount] = useState("")
   const [email, setEmail] = useState("")
@@ -23,9 +34,7 @@ export default function DonatePage() {
   const { toast } = useToast()
   const { user } = useAuth()
   const { data: causes, isLoading: causesLoading } = useDonationCauses(true)
-
-  const liveCauses = causes && causes.length > 0 ? causes : DEFAULT_DONATION_CAUSES
-  const usingDefaultCauses = !causesLoading && (!causes || causes.length === 0)
+  const liveCauses = causes ?? []
 
   const presetAmounts = [5000, 10000, 25000, 50000, 100000]
 
@@ -34,6 +43,13 @@ export default function DonatePage() {
   useEffect(() => {
     if (user?.email && !email) setEmail(user.email)
   }, [email, user?.email])
+
+  useEffect(() => {
+    if (!causeFromUrl || liveCauses.length === 0) return
+    if (liveCauses.some((cause) => cause.id === causeFromUrl)) {
+      setSelectedCause(causeFromUrl)
+    }
+  }, [causeFromUrl, liveCauses])
 
   const handleDonate = async () => {
     if (!selectedCause) {
@@ -126,11 +142,6 @@ export default function DonatePage() {
         {/* Cause Selection */}
         <div className="mb-12">
           <Label className="text-lg font-semibold mb-4 block">Select a Cause to Support</Label>
-          {usingDefaultCauses ? (
-            <p className="mb-4 text-sm text-muted-foreground">
-              Showing default causes until the admin publishes live fundraising campaigns.
-            </p>
-          ) : null}
           {causesLoading ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3].map((i) => (
@@ -144,16 +155,19 @@ export default function DonatePage() {
             </div>
           ) : liveCauses.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {liveCauses.map((cause) => (
+              {liveCauses.map((cause) => {
+                const poster = causeImage(cause)
+                return (
                 <Card
                   key={cause.id}
-                  className={`cursor-pointer transition-all hover:shadow-lg ${
+                  className={`cursor-pointer overflow-hidden rounded-md transition-all hover:shadow-lg ${
                     selectedCause === cause.id
                       ? "border-2 border-leo-primary bg-leo-primary/5 shadow-md"
                       : "border hover:border-leo-primary/50"
                   }`}
                   onClick={() => setSelectedCause(cause.id)}
                 >
+                  {poster ? <img src={poster} alt="" className="h-40 w-full object-cover" /> : null}
                   <CardHeader>
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <CardTitle className="min-w-0 text-lg">{cause.title}</CardTitle>
@@ -191,7 +205,8 @@ export default function DonatePage() {
                     )}
                   </CardContent>
                 </Card>
-              ))}
+                )
+              })}
             </div>
           ) : (
             <Card className="border-dashed">
@@ -310,7 +325,10 @@ export default function DonatePage() {
             </Card>
 
             {/* Selected Cause Info */}
-            <Card className="border-0 shadow-xl rounded-lg bg-gradient-to-br from-leo-primary/10 to-leo-secondary/10">
+            <Card className="overflow-hidden rounded-lg border-0 bg-gradient-to-br from-leo-primary/10 to-leo-secondary/10 shadow-xl">
+              {causeImage(selectedCauseData) ? (
+                <img src={causeImage(selectedCauseData)} alt="" className="h-48 w-full object-cover" />
+              ) : null}
               <CardHeader>
                 <CardTitle className="text-2xl">{selectedCauseData.title}</CardTitle>
               </CardHeader>

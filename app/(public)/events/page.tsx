@@ -6,23 +6,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useEvents } from "@/lib/hooks/use-events"
-import {
-  DEFAULT_EVENTS,
-  EVENT_CATEGORY_LABELS,
-  eventImage,
-  isPastEvent,
-  withFallback,
-} from "@/lib/content/defaults"
-import { eventStatusClass, eventStatusLabel, formatEventSchedule, resolveEventStatus } from "@/lib/content/events"
+import { EVENT_CATEGORY_LABELS, eventImage } from "@/lib/content/defaults"
+import { eventStatusClass, eventStatusLabel, formatEventSchedule, isPastEvent, resolveEventStatus } from "@/lib/content/events"
 import type { Event } from "@/lib/types"
 
 function EventRow({ event }: { event: Event }) {
   const status = resolveEventStatus(event)
+  const poster = eventImage(event)
   return (
     <Card className="overflow-hidden rounded-md border-none shadow-sm hover:shadow-md">
       <div className="md:flex">
-        <div className="relative h-48 min-h-48 bg-neutral-100 md:h-auto md:w-1/3">
-          <img src={eventImage(event)} alt={event.title} className="h-full w-full object-cover" />
+        <div className="relative flex h-48 min-h-48 items-center justify-center bg-neutral-100 md:h-auto md:w-1/3">
+          {poster ? (
+            <img src={poster} alt={event.title} className="h-full w-full object-cover" />
+          ) : (
+            <Calendar className="h-12 w-12 text-neutral-400" />
+          )}
         </div>
         <CardContent className="p-6 md:w-2/3">
           <div className="mb-4 flex flex-wrap items-start gap-2">
@@ -71,7 +70,7 @@ function EventListSkeleton() {
 
 export default function EventsPage() {
   const { data: events, isLoading } = useEvents()
-  const list = withFallback(events, DEFAULT_EVENTS)
+  const list = events ?? []
   const upcomingEvents = list.filter((event) => !isPastEvent(event))
   const pastEvents = list.filter((event) => isPastEvent(event))
 
