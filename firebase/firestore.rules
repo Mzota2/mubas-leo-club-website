@@ -38,6 +38,15 @@ service cloud.firestore {
         && (!('membershipType' in resource.data) || request.resource.data.membershipType == resource.data.membershipType)
         && (!('membershipStatus' in resource.data) || request.resource.data.membershipStatus == resource.data.membershipStatus);
 
+      // Prospective members may graduate after finishing every module quiz.
+      allow update: if isOwner(userId)
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.role == 'member'
+        && (!('leoId' in resource.data) || request.resource.data.leoId == resource.data.leoId)
+        && resource.data.membershipType == 'prospective-leo'
+        && request.resource.data.membershipType == 'leo'
+        && request.resource.data.trainingStatus == 'completed';
+
       allow update: if !signedIn()
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(['joiningFeePaid', 'joiningFeePaidAt', 'updatedAt'])
         && request.resource.data.joiningFeePaid == true;
@@ -149,11 +158,11 @@ service cloud.firestore {
 
     match /trainingProgress/{userId} {
       allow read: if isOwner(userId) || isAdminOrLeader();
-      allow create, update: if isAdminOrLeader() || (
-        isOwner(userId)
-        && request.resource.data.status != 'waived'
-        && request.resource.data.waived != true
-      );
+      allow create, update: if isAdminOrLeader();
+      allow create, update: if isOwner(userId)
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status in ['not_started', 'in_progress', 'completed']
+        && request.resource.data.waived != true;
       allow delete: if isAdminOrLeader();
     }
 

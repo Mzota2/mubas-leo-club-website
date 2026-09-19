@@ -482,9 +482,14 @@ export async function deleteTrainingModule(moduleId: string) {
 }
 
 export async function getTrainingProgress(userId: string): Promise<TrainingProgress | null> {
-  const snapshot = await getDoc(doc(db, "trainingProgress", userId))
-  if (!snapshot.exists()) return null
-  return { id: snapshot.id, ...snapshot.data() } as TrainingProgress
+  try {
+    const snapshot = await getDoc(doc(db, "trainingProgress", userId))
+    if (!snapshot.exists()) return null
+    return { id: snapshot.id, ...snapshot.data() } as TrainingProgress
+  } catch (error) {
+    console.error("getTrainingProgress failed", error)
+    return null
+  }
 }
 
 export async function getAllTrainingProgress() {
@@ -493,22 +498,28 @@ export async function getAllTrainingProgress() {
 }
 
 export async function upsertTrainingProgress(userId: string, data: Partial<TrainingProgress>) {
+  await ensureAuthToken()
   const now = isoNow()
   const existing = await getTrainingProgress(userId)
+  const { id: _id, ...safeData } = data
   await setDoc(
     doc(db, "trainingProgress", userId),
-    {
+    omitUndefined({
       userId,
-      xp: existing?.xp ?? 0,
-      badges: existing?.badges ?? [],
-      completedModuleIds: existing?.completedModuleIds ?? [],
-      viewedResourceIds: existing?.viewedResourceIds ?? [],
-      quizAttempts: existing?.quizAttempts ?? [],
-      status: existing?.status ?? "not_started",
-      createdAt: existing?.createdAt ?? now,
-      ...data,
+      xp: safeData.xp ?? existing?.xp ?? 0,
+      badges: safeData.badges ?? existing?.badges ?? [],
+      completedModuleIds: safeData.completedModuleIds ?? existing?.completedModuleIds ?? [],
+      viewedResourceIds: safeData.viewedResourceIds ?? existing?.viewedResourceIds ?? [],
+      quizAttempts: safeData.quizAttempts ?? existing?.quizAttempts ?? [],
+      status: safeData.status ?? existing?.status ?? "not_started",
+      waived: safeData.waived ?? existing?.waived ?? false,
+      waivedBy: safeData.waivedBy ?? existing?.waivedBy,
+      waivedReason: safeData.waivedReason ?? existing?.waivedReason,
+      waivedAt: safeData.waivedAt ?? existing?.waivedAt,
+      completedAt: safeData.completedAt ?? existing?.completedAt,
+      createdAt: existing?.createdAt ?? safeData.createdAt ?? now,
       updatedAt: now,
-    },
+    } as Record<string, unknown>),
     { merge: true },
   )
 }

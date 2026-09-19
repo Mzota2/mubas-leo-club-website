@@ -252,6 +252,56 @@ html {
   animation: fade-in 0.6s ease-out;
 }
 
+@keyframes leo-balloon-up {
+  0% {
+    transform: translateY(110vh) rotate(-10deg);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateY(-18vh) rotate(12deg);
+    opacity: 0.15;
+  }
+}
+
+@keyframes leo-pop-in {
+  0% {
+    transform: scale(0.62);
+    opacity: 0;
+  }
+  65% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.leo-balloon {
+  position: absolute;
+  bottom: -2rem;
+  width: 1.35rem;
+  height: 1.75rem;
+  border-radius: 999px 999px 999px 999px;
+  animation-name: leo-balloon-up;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.leo-balloon::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 1px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.leo-pop {
+  animation: leo-pop-in 0.8s ease-out;
+}
+
 .slide-in-from-bottom-4 {
   animation: slide-in-from-bottom 0.6s ease-out;
 }

@@ -80,7 +80,7 @@ export default function PortalDashboard() {
           <div>
             <p className="text-sm text-white/80">{dateLabel}</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight lg:text-3xl">
-              {greetingForHour(now)}, {user?.firstName || "Leo"}
+              {greetingForHour(now)}, Leo {user?.username || "Member"}
             </h1>
             <p className="mt-2 max-w-xl text-sm text-white/90">
               {isProspectiveLeo

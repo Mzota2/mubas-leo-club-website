@@ -1,13 +1,12 @@
 "use client"
 
-import { use, useMemo, useState } from "react"
+import { use, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, CheckCircle2, ExternalLink, Globe, Trophy } from "lucide-react"
+import { ArrowLeft, CheckCircle2, ExternalLink, Globe, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/hooks/use-auth"
-import { useUpdateUser } from "@/lib/hooks/use-users"
 import { useMembershipFees } from "@/lib/hooks/use-membership-fees"
 import { hasPaidJoiningFee } from "@/lib/membership/billing"
 import {
@@ -16,87 +15,89 @@ import {
   useTrainingProgress,
   useUpsertTrainingProgress,
 } from "@/lib/hooks/use-training-program"
-import { passingScoreFor, PERFECT_QUIZ_XP, RESOURCE_XP, youtubeIdFromUrl } from "@/lib/training/gamify"
+import { curriculumStats, passingScoreFor, RESOURCE_XP, youtubeIdFromUrl } from "@/lib/training/gamify"
 import { isLionsClubResource, LIONS_CLUB_DEFAULT_URL } from "@/lib/training/resources"
-import {
-  emptyProgress,
-  isModuleUnlocked,
-  publishedModules,
-  withGraduation,
-  withQuizAttempt,
-  withResourceView,
-} from "@/lib/training/progress"
+import { emptyProgress, isModuleUnlocked, publishedModules, withResourceView } from "@/lib/training/progress"
 import { portalCanvasMuted, portalCanvasTitle } from "@/components/portal/styles"
 
 export default function PortalTrainingModulePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, firebaseUser } = useAuth()
+  const userId = user?.id || firebaseUser?.uid
   const { data: module } = useTrainingModule(id)
   const { data: modules = [] } = useTrainingModules()
-  const { data: savedProgress } = useTrainingProgress(user?.id)
-  const { data: fees = [] } = useMembershipFees(user?.id, true)
-  const joiningPaid = user ? hasPaidJoiningFee(fees, user.id, user) : false
+  const { data: savedProgress, isLoading: progressLoading } = useTrainingProgress(userId)
+  const { data: fees = [] } = useMembershipFees(userId, true)
+  const joiningPaid = userId ? hasPaidJoiningFee(fees, userId, user) : false
   const upsertProgress = useUpsertTrainingProgress()
-  const updateUser = useUpdateUser()
+  const quizRef = useRef<HTMLElement>(null)
 
-  const progress = savedProgress ?? (user ? emptyProgress(user.id) : null)
+  const progress = savedProgress ?? (userId && !progressLoading ? emptyProgress(userId) : null)
   const curriculum = publishedModules(modules)
+  const stats = curriculumStats(curriculum)
   const unlocked = module ? isModuleUnlocked(curriculum, progress, module.id) : false
-  const resources = module?.resources ?? []
-  const questions = module?.quiz.questions ?? []
+  const resources = (module?.resources ?? []).map((resource, index) => ({
+    ...resource,
+    id: resource.id || `resource-${index}`,
+  }))
+  const questions = module?.quiz?.questions ?? []
   const allViewed = resources.length === 0 || resources.every((resource) => progress?.viewedResourceIds.includes(resource.id))
-  const requiredScore = passingScoreFor(module?.quiz.passingScore)
+  const requiredScore = passingScoreFor(module?.quiz?.passingScore)
+  const savingProgress = upsertProgress.isPending
 
-  const [answers, setAnswers] = useState<Record<string, number>>({})
-  const [result, setResult] = useState<{ score: number; passed: boolean; graduated: boolean } | null>(null)
+  const [markingId, setMarkingId] = useState<string | null>(null)
 
   const latest = useMemo(
     () => progress?.quizAttempts.filter((attempt) => attempt.moduleId === id).at(-1),
     [progress, id],
   )
 
-  const markViewed = async (resourceId: string) => {
-    if (!user || !progress) return
-    const already = progress.viewedResourceIds.includes(resourceId)
-    const next = withResourceView(progress, resourceId)
-    await upsertProgress.mutateAsync({ userId: user.id, data: next })
-    if (!already) {
-      toast({ title: `+${RESOURCE_XP} XP`, description: "Resource studied. Keep the streak going." })
+  const persistProgress = async (next: ReturnType<typeof emptyProgress>) => {
+    if (!userId) {
+      toast({ title: "Sign in required", description: "Sign in again to save training progress.", variant: "destructive" })
+      return false
+    }
+    try {
+      await upsertProgress.mutateAsync({ userId, data: next })
+      return true
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not save training progress."
+      toast({ title: "Progress not saved", description: message, variant: "destructive" })
+      return false
     }
   }
 
-  const submitQuiz = async () => {
-    if (!user || !progress || !module || questions.length === 0) return
-    if (!joiningPaid) {
-      toast({ title: "Joining fee required", description: "Pay the once-off joining fee before taking quizzes." })
-      router.push("/portal/join-fee")
-      return
+  const markViewed = async (resourceId: string) => {
+    if (!progress || savingProgress) return
+    const already = progress.viewedResourceIds.includes(resourceId)
+    const next = withResourceView(progress, resourceId, stats.moduleCount)
+    setMarkingId(resourceId)
+    const saved = await persistProgress(next)
+    setMarkingId(null)
+    if (!saved) return
+    if (!already) {
+      toast({ title: `+${RESOURCE_XP} XP`, description: "Resource studied. Keep going to unlock the quiz." })
     }
-    const correct = questions.filter((question) => answers[question.id] === question.correctIndex).length
-    const score = Math.round((correct / questions.length) * 100)
-    const passed = score >= requiredScore
-    let next = withQuizAttempt(progress, module, score)
-    next = withGraduation(next, curriculum)
-    await upsertProgress.mutateAsync({ userId: user.id, data: next })
-    if (next.status === "completed" && user.membershipType !== "leo") {
-      await updateUser.mutateAsync({
-        userId: user.id,
-        data: {
-          membershipType: "leo",
-          trainingStatus: "completed",
-          trainingCompletedAt: new Date().toISOString(),
-        },
-      })
+    const studiedAll = resources.every((resource) => next.viewedResourceIds.includes(resource.id))
+    if (studiedAll) {
+      window.setTimeout(() => quizRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150)
     }
-    setResult({ score, passed, graduated: next.status === "completed" })
-    if (passed) {
-      toast({
-        title: score >= 100 ? `Perfect! +${module.xp + PERFECT_QUIZ_XP} XP` : `Module passed · +${module.xp} XP`,
-        description: next.status === "completed" ? "You are now a full Leo member." : "Next module unlocked.",
-      })
+  }
+
+  const markAllViewed = async () => {
+    if (!progress || savingProgress) return
+    let next = progress
+    for (const resource of resources) {
+      next = withResourceView(next, resource.id, stats.moduleCount)
     }
+    setMarkingId("all")
+    const saved = await persistProgress(next)
+    setMarkingId(null)
+    if (!saved) return
+    toast({ title: "Study complete", description: "You can take the quiz now." })
+    window.setTimeout(() => quizRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150)
   }
 
   if (!module) {
@@ -126,7 +127,21 @@ export default function PortalTrainingModulePage({ params }: { params: Promise<{
       </div>
 
       <section className="space-y-4">
-        <h2 className={`font-semibold ${portalCanvasTitle}`}>Learn</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className={`font-semibold ${portalCanvasTitle}`}>Learn</h2>
+          {resources.length > 1 && !allViewed ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="bg-white"
+              disabled={savingProgress || progressLoading || !progress}
+              onClick={markAllViewed}
+            >
+              {markingId === "all" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Mark study complete
+            </Button>
+          ) : null}
+        </div>
         {resources.length === 0 ? (
           <div className="rounded-md bg-white p-4 text-sm text-neutral-700">No resources yet. You can still take the quiz if questions are ready.</div>
         ) : (
@@ -193,7 +208,13 @@ export default function PortalTrainingModulePage({ params }: { params: Promise<{
                     </div>
                   ) : null}
                   {!viewed ? (
-                    <Button type="button" className="mt-4 rounded-md bg-leo-primary text-white" onClick={() => markViewed(resource.id)}>
+                    <Button
+                      type="button"
+                      className="mt-4 rounded-md bg-leo-primary text-white"
+                      disabled={savingProgress || progressLoading || !progress}
+                      onClick={() => markViewed(resource.id)}
+                    >
+                      {markingId === resource.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                       Mark as studied · +{RESOURCE_XP} XP
                     </Button>
                   ) : (
@@ -206,81 +227,44 @@ export default function PortalTrainingModulePage({ params }: { params: Promise<{
         )}
       </section>
 
-      <section className="rounded-md bg-white p-4 shadow-sm">
-        <h2 className="font-semibold text-neutral-900">Quiz</h2>
+      <section ref={quizRef} className="rounded-md bg-white p-4 shadow-sm">
+        <h2 className="font-semibold text-neutral-900">Ready for the quiz?</h2>
         <p className="mt-1 text-sm text-neutral-600">
-          Score at least {requiredScore}% to complete this module and earn {module.xp} XP.
-          {latest ? ` Last score: ${latest.score}%.` : ""}
+          {questions.length} question{questions.length === 1 ? "" : "s"} · pass mark {requiredScore}% · {module.xp} XP
+          {latest ? ` · last score ${latest.score}%` : ""}
+        </p>
+        <p className="mt-1 text-xs text-neutral-500">
+          Program totals: {stats.moduleCount} modules · {stats.questionCount} questions · {stats.maxXp} XP available
         </p>
 
         {!joiningPaid ? (
           <div className="mt-3 rounded-md bg-amber-50 p-3">
-            <p className="text-sm text-amber-900">Pay the once-off joining fee to unlock this quiz. It is separate from membership dues.</p>
+            <p className="text-sm text-amber-900">Pay the once-off joining fee to unlock this quiz.</p>
             <Button asChild className="mt-3 bg-leo-primary text-white">
               <Link href="/portal/join-fee">Pay joining fee</Link>
             </Button>
           </div>
         ) : !allViewed ? (
-          <p className="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-900">Study every resource above before unlocking the quiz.</p>
+          <div className="mt-3 rounded-md bg-amber-50 p-3">
+            <p className="text-sm text-amber-900">Study every resource above before starting the quiz.</p>
+            <Button
+              type="button"
+              className="mt-3 bg-leo-primary text-white"
+              disabled={savingProgress || progressLoading || !progress}
+              onClick={markAllViewed}
+            >
+              {markingId === "all" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Mark study complete
+            </Button>
+          </div>
         ) : questions.length === 0 ? (
           <p className="mt-3 text-sm text-neutral-600">The quiz has not been added yet.</p>
         ) : (
-          <div className="mt-4 space-y-5">
-            {questions.map((question, index) => (
-              <fieldset key={question.id} className="space-y-2">
-                <legend className="font-medium text-neutral-900">
-                  {index + 1}. {question.prompt}
-                </legend>
-                {question.options.map((option, optionIndex) => (
-                  <label key={optionIndex} className="flex items-center gap-2 text-sm text-neutral-800">
-                    <input
-                      type="radio"
-                      name={question.id}
-                      checked={answers[question.id] === optionIndex}
-                      onChange={() => setAnswers((current) => ({ ...current, [question.id]: optionIndex }))}
-                    />
-                    {option}
-                  </label>
-                ))}
-              </fieldset>
-            ))}
-            <Button
-              type="button"
-              onClick={submitQuiz}
-              disabled={Object.keys(answers).length < questions.length || upsertProgress.isPending}
-              className="rounded-md bg-[#F59E0B] text-white hover:bg-[#D97706]"
-            >
-              Submit quiz
-            </Button>
-          </div>
+          <Button asChild className="mt-4 w-full bg-[#F59E0B] text-white hover:bg-[#D97706]">
+            <Link href={`/portal/training/${id}/quiz`}>{latest && !latest.passed ? "Retake quiz" : latest?.passed ? "Review quiz" : "Start quiz"}</Link>
+          </Button>
         )}
-
-        {result ? (
-          <div className={`mt-4 rounded-md p-4 ${result.passed ? "bg-emerald-50 text-emerald-900" : "bg-red-50 text-red-900"}`}>
-            <p className="text-lg font-semibold">{result.score}%</p>
-            <p className="text-sm">
-              {result.passed
-                ? result.graduated
-                  ? "Training complete. You are now a full Leo member."
-                  : "Module passed. XP added. Continue to the next stage."
-                : `Need ${requiredScore}% or more. Review the resources and try again.`}
-            </p>
-            {result.passed ? (
-              <Button asChild className="mt-3 bg-leo-primary text-white">
-                <Link href="/portal/training">Back to path</Link>
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
       </section>
-
-      {result?.graduated ? (
-        <div className="rounded-md bg-gradient-to-br from-amber-400 to-red-600 p-5 text-white shadow-sm">
-          <Trophy className="h-8 w-8" />
-          <p className="mt-2 text-xl font-semibold">Leo Graduate</p>
-          <p className="text-sm text-white/90">You cleared the new member program. Welcome to full membership.</p>
-        </div>
-      ) : null}
     </div>
   )
 }

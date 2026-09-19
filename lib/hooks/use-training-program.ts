@@ -80,7 +80,34 @@ export function useUpsertTrainingProgress() {
   return useMutation({
     mutationFn: ({ userId, data }: { userId: string; data: Partial<TrainingProgress> }) =>
       upsertTrainingProgress(userId, data),
-    onSuccess: (_void, variables) => {
+    onMutate: async ({ userId, data }) => {
+      await queryClient.cancelQueries({ queryKey: ["training-progress", userId] })
+      const previous = queryClient.getQueryData<TrainingProgress | null>(["training-progress", userId])
+      queryClient.setQueryData<TrainingProgress>(["training-progress", userId], {
+        ...(previous ?? {
+          id: userId,
+          userId,
+          xp: 0,
+          badges: [],
+          completedModuleIds: [],
+          viewedResourceIds: [],
+          quizAttempts: [],
+          status: "not_started",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }),
+        ...data,
+        id: userId,
+        userId,
+      })
+      return { previous }
+    },
+    onError: (_error, variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(["training-progress", variables.userId], context.previous)
+      }
+    },
+    onSettled: (_result, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: ["training-progress", variables.userId] })
       queryClient.invalidateQueries({ queryKey: ["training-progress-all"] })
     },

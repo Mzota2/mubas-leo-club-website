@@ -39,16 +39,19 @@ export function overallScore(progress: TrainingProgress | null, moduleIds: strin
   return Math.round(scored.reduce((sum, attempt) => sum + attempt.score, 0) / scored.length)
 }
 
-export function withResourceView(progress: TrainingProgress, resourceId: string): TrainingProgress {
+export function withResourceView(progress: TrainingProgress, resourceId: string, moduleCount = 0): TrainingProgress {
   if (progress.viewedResourceIds.includes(resourceId)) return progress
   const viewedResourceIds = [...progress.viewedResourceIds, resourceId]
   const xp = progress.xp + RESOURCE_XP
-  return refreshBadges({
-    ...progress,
-    viewedResourceIds,
-    xp,
-    status: progress.status === "not_started" ? "in_progress" : progress.status,
-  })
+  return refreshBadges(
+    {
+      ...progress,
+      viewedResourceIds,
+      xp,
+      status: progress.status === "not_started" ? "in_progress" : progress.status,
+    },
+    moduleCount,
+  )
 }
 
 export function moduleStreak(modules: TrainingModule[], progress: TrainingProgress | null) {
@@ -64,8 +67,9 @@ export function withQuizAttempt(
   progress: TrainingProgress,
   module: TrainingModule,
   score: number,
+  moduleCount = 0,
 ): TrainingProgress {
-  const passed = score >= passingScoreFor(module.quiz.passingScore)
+  const passed = score >= passingScoreFor(module.quiz?.passingScore)
   const quizAttempts = [
     ...progress.quizAttempts,
     { moduleId: module.id, score, passed, attemptedAt: new Date().toISOString() },
@@ -76,26 +80,32 @@ export function withQuizAttempt(
     : progress.completedModuleIds
   const bonus = passed && !alreadyComplete && score >= 100 ? PERFECT_QUIZ_XP : 0
   const xp = passed && !alreadyComplete ? progress.xp + module.xp + bonus : progress.xp
-  return refreshBadges({
-    ...progress,
-    quizAttempts,
-    completedModuleIds,
-    xp,
-    status: progress.status === "completed" || progress.status === "waived" ? progress.status : "in_progress",
-  })
+  return refreshBadges(
+    {
+      ...progress,
+      quizAttempts,
+      completedModuleIds,
+      xp,
+      status: progress.status === "completed" || progress.status === "waived" ? progress.status : "in_progress",
+    },
+    moduleCount,
+  )
 }
 
-export function withWaiver(progress: TrainingProgress, adminId: string, reason: string): TrainingProgress {
+export function withWaiver(progress: TrainingProgress, adminId: string, reason: string, moduleCount = 0): TrainingProgress {
   const now = new Date().toISOString()
-  return refreshBadges({
-    ...progress,
-    status: "waived",
-    waived: true,
-    waivedBy: adminId,
-    waivedReason: reason,
-    waivedAt: now,
-    completedAt: now,
-  })
+  return refreshBadges(
+    {
+      ...progress,
+      status: "waived",
+      waived: true,
+      waivedBy: adminId,
+      waivedReason: reason,
+      waivedAt: now,
+      completedAt: now,
+    },
+    moduleCount,
+  )
 }
 
 export function withGraduation(progress: TrainingProgress, modules: TrainingModule[]): TrainingProgress {
@@ -104,14 +114,17 @@ export function withGraduation(progress: TrainingProgress, modules: TrainingModu
   const allPassed = required.every((module) => progress.completedModuleIds.includes(module.id))
   const score = overallScore(progress, required.map((module) => module.id))
   if (!allPassed || score < TRAINING_PASSING_SCORE) return progress
-  return refreshBadges({
-    ...progress,
-    status: "completed",
-    completedAt: progress.completedAt ?? new Date().toISOString(),
-  })
+  return refreshBadges(
+    {
+      ...progress,
+      status: "completed",
+      completedAt: progress.completedAt ?? new Date().toISOString(),
+    },
+    required.length,
+  )
 }
 
-function refreshBadges(progress: TrainingProgress): TrainingProgress {
+function refreshBadges(progress: TrainingProgress, moduleCount = 0): TrainingProgress {
   const hasPerfectScore = progress.quizAttempts.some((attempt) => attempt.score >= 100)
   return {
     ...progress,
@@ -120,6 +133,7 @@ function refreshBadges(progress: TrainingProgress): TrainingProgress {
       passedCount: progress.completedModuleIds.length,
       hasPerfectScore,
       completedProgram: progress.status === "completed" || progress.status === "waived",
+      moduleCount,
     }),
   }
 }

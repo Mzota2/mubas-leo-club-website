@@ -102,7 +102,7 @@ export default function AdminTrainingPage() {
     const existing = progressList?.find((entry) => entry.userId === waiverUser.id) ?? emptyProgress(waiverUser.id)
     await upsertProgress.mutateAsync({
       userId: waiverUser.id,
-      data: withWaiver(existing, user.id, waiverReason.trim()),
+      data: withWaiver(existing, user.id, waiverReason.trim(), published.length),
     })
     await updateUser.mutateAsync({
       userId: waiverUser.id,
