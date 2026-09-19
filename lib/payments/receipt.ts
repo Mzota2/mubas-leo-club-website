@@ -1,6 +1,7 @@
 import { periodLabel } from "@/lib/membership/billing"
-import { displayName, formatDate, formatMoney } from "@/lib/utils/format"
-import { downloadPdf } from "@/lib/payments/pdf"
+import { displayName, formatDate } from "@/lib/utils/format"
+import { downloadBytes } from "@/lib/payments/pdf"
+import { buildReceiptPdf, loadReceiptLogo } from "@/lib/payments/receipt-pdf"
 import type { PaymentKind, PaymentRecord, PaymentReceipt, PaymentStatus } from "@/lib/payments/types"
 import type { Donation, MembershipFee, Order, User } from "@/lib/types"
 
@@ -24,27 +25,24 @@ export function recordToReceipt(record: PaymentRecord): PaymentReceipt {
     method: record.method === "offline" ? "Recorded offline" : record.method === "paychangu" ? "PayChangu" : "—",
     detail: record.detail,
     status: record.status,
+    items:
+      record.items && record.items.length > 0
+        ? record.items
+        : [
+            {
+              name: kindLabel(record.kind),
+              description: record.title,
+              quantity: 1,
+              total: record.amount,
+            },
+          ],
   }
 }
 
-export function downloadReceipt(receipt: PaymentReceipt) {
+export async function downloadReceipt(receipt: PaymentReceipt) {
   const filename = `mubas-leo-receipt-${receipt.txRef}.pdf`
-  downloadPdf(filename, "MUBAS Leo Club Receipt", [
-    "Leadership, Experience, Opportunity",
-    "",
-    `Receipt type: ${kindLabel(receipt.kind)}`,
-    `Reference: ${receipt.txRef}`,
-    `Date: ${formatDate(receipt.date)}`,
-    `Status: ${receipt.status}`,
-    `Payer: ${receipt.payerName}`,
-    receipt.payerEmail ? `Email: ${receipt.payerEmail}` : undefined,
-    `Amount: ${formatMoney(receipt.amount, receipt.currency)}`,
-    `Method: ${receipt.method}`,
-    receipt.detail ? `Details: ${receipt.detail}` : `Description: ${receipt.title}`,
-    "",
-    "This receipt confirms a payment recorded on the MUBAS Leo Club platform.",
-    "Keep it for your records. For help, contact the club administration.",
-  ].filter((line): line is string => line !== undefined))
+  const logo = await loadReceiptLogo()
+  downloadBytes(filename, buildReceiptPdf(receipt, logo))
 }
 
 export function paymentTotals(records: PaymentRecord[]) {
@@ -99,6 +97,20 @@ export function feeToRecord(fee: MembershipFee, member?: User | null): PaymentRe
 }
 
 export function orderToRecord(order: Order): PaymentRecord {
+  const lines = (order.items ?? []).map((item) => ({
+    name: item.name,
+    description: [item.size, item.color].filter(Boolean).join(" · ") || item.name,
+    quantity: item.quantity,
+    total: Number(item.price) * Number(item.quantity),
+  }))
+  if (order.deliveryFee) {
+    lines.push({
+      name: "Delivery",
+      description: order.shippingAddress || "Delivery fee",
+      quantity: 1,
+      total: Number(order.deliveryFee),
+    })
+  }
   const itemSummary = (order.items ?? []).map((item) => `${item.name} × ${item.quantity}`).join(", ")
   return {
     id: order.id,
@@ -113,6 +125,7 @@ export function orderToRecord(order: Order): PaymentRecord {
     txRef: order.txRef,
     date: order.updatedAt || order.createdAt,
     detail: order.shippingAddress,
+    items: lines,
   }
 }
 

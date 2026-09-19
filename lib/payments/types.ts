@@ -2,6 +2,13 @@ export type PaymentKind = "donation" | "membership" | "joining" | "order"
 
 export type PaymentStatus = "paid" | "pending" | "failed" | "overdue"
 
+export type ReceiptLineItem = {
+  name: string
+  description: string
+  quantity: number
+  total: number
+}
+
 export type PaymentRecord = {
   id: string
   kind: PaymentKind
@@ -15,6 +22,7 @@ export type PaymentRecord = {
   txRef?: string
   date: string
   detail?: string
+  items?: ReceiptLineItem[]
   sample?: boolean
 }
 
@@ -30,4 +38,5 @@ export type PaymentReceipt = {
   method: string
   detail?: string
   status: string
+  items?: ReceiptLineItem[]
 }

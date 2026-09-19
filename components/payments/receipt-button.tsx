@@ -23,7 +23,9 @@ export function ReceiptButton({
       variant="outline"
       size="sm"
       disabled={!canDownload}
-      onClick={() => payload && downloadReceipt(payload)}
+      onClick={() => {
+        if (payload) void downloadReceipt(payload)
+      }}
     >
       <Download className="h-4 w-4" />
       Receipt
