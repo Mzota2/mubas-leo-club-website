@@ -3,16 +3,18 @@
 import type React from "react"
 
 import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { Loader2 } from "lucide-react"
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, firebaseUser, loading } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
+  const isPaymentReturn = pathname.includes("/return")
 
   useEffect(() => {
-    if (loading) return
+    if (loading || isPaymentReturn) return
 
     if (!firebaseUser) {
       router.push("/auth/login")
@@ -24,7 +26,11 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
       const email = firebaseUser.email ? `?email=${encodeURIComponent(firebaseUser.email)}` : ""
       router.push(`/auth/verify-sent${email}`)
     }
-  }, [user, firebaseUser, loading, router])
+  }, [user, firebaseUser, loading, router, isPaymentReturn])
+
+  if (isPaymentReturn) {
+    return <>{children}</>
+  }
 
   if (loading) {
     return (

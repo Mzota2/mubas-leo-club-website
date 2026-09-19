@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createDonation, createMembershipFee, createOrder } from "@/lib/firebase/firestore"
 import { PAYCHANGU_CONFIG } from "@/lib/paychangu/config"
+import { absoluteUrl, resolvePublicOrigin, returnPathForKind, withTxRef } from "@/lib/payments/urls"
 
 function getFiscalYear(date = new Date()) {
   const year = date.getFullYear()
@@ -11,11 +12,6 @@ function getFiscalYear(date = new Date()) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL
-    if (!appUrl) {
-      return NextResponse.json({ success: false, error: "NEXT_PUBLIC_APP_URL is not configured" }, { status: 500 })
-    }
 
     const paychanguKey = process.env.PAYCHANGU_SECRET_KEY || PAYCHANGU_CONFIG.secretKey
     if (!paychanguKey) {
@@ -85,19 +81,9 @@ export async function POST(request: Request) {
       })
     }
 
-    const returnUrlBase =
-      body.returnUrl ||
-      (body.purpose === "donation"
-        ? `${appUrl}/donate/return`
-        : body.purpose === "membership"
-          ? `${appUrl}/portal/membership/return`
-          : body.purpose === "joining"
-            ? `${appUrl}/portal/join-fee/return`
-            : body.purpose === "order"
-              ? `${appUrl}/portal/shop/checkout/return`
-              : `${appUrl}/portal/payments`)
-    const separator = returnUrlBase.includes("?") ? "&" : "?"
-    const returnUrl = `${returnUrlBase}${separator}txRef=${encodeURIComponent(txRef)}`
+    const origin = resolvePublicOrigin(request, body.returnUrl)
+    const returnUrlBase = body.returnUrl || `${origin}${returnPathForKind(body.purpose)}`
+    const returnUrl = withTxRef(absoluteUrl(returnUrlBase, origin), txRef)
 
     const payChanguResponse = await fetch(PAYCHANGU_CONFIG.paymentUrl, {
       method: "POST",
@@ -112,7 +98,8 @@ export async function POST(request: Request) {
         email: body.email,
         first_name: body.firstName,
         last_name: body.lastName,
-        callback_url: body.callbackUrl || `${appUrl}/api/payments/callback`,
+        // PayChangu sends the customer to callback_url after payment.
+        callback_url: returnUrl,
         return_url: returnUrl,
         tx_ref: txRef,
         customization: body.customization,
