@@ -10,6 +10,7 @@ import { useEvents } from "@/lib/hooks/use-events"
 import { useDonations } from "@/lib/hooks/use-donations"
 import { downloadCsv } from "@/lib/utils/csv"
 import { formatMoney } from "@/lib/utils/format"
+import { resolveEventStatus } from "@/lib/content/events"
 import type { Donation, Event, User } from "@/lib/types"
 
 export default function ReportsPage() {
@@ -97,8 +98,9 @@ export default function ReportsPage() {
           id: event.id,
           title: event.title,
           category: event.category,
-          status: event.status,
+          status: resolveEventStatus(event),
           date: event.date,
+          endDate: event.endDate ?? "",
           time: event.time,
           location: event.location,
           attendeesCount: event.attendees?.length ?? 0,

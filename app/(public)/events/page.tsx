@@ -13,10 +13,11 @@ import {
   isPastEvent,
   withFallback,
 } from "@/lib/content/defaults"
-import { formatDate } from "@/lib/utils/format"
+import { eventStatusClass, eventStatusLabel, formatEventSchedule, resolveEventStatus } from "@/lib/content/events"
 import type { Event } from "@/lib/types"
 
 function EventRow({ event }: { event: Event }) {
+  const status = resolveEventStatus(event)
   return (
     <Card className="overflow-hidden rounded-md border-none shadow-sm hover:shadow-md">
       <div className="md:flex">
@@ -24,18 +25,18 @@ function EventRow({ event }: { event: Event }) {
           <img src={eventImage(event)} alt={event.title} className="h-full w-full object-cover" />
         </div>
         <CardContent className="p-6 md:w-2/3">
-          <div className="mb-4 flex items-start justify-between">
+          <div className="mb-4 flex flex-wrap items-start gap-2">
             <Badge className="bg-leo-primary text-white">{EVENT_CATEGORY_LABELS[event.category] ?? event.category}</Badge>
+            <Badge className={eventStatusClass(status)}>
+              {eventStatusLabel(status)}
+            </Badge>
           </div>
           <h3 className="mb-3 text-xl font-bold md:text-2xl">{event.title}</h3>
           <p className="mb-4 text-gray-600">{event.description}</p>
           <div className="space-y-2 text-sm text-gray-600">
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 shrink-0" />
-              <span>
-                {formatDate(event.date)}
-                {event.time ? ` at ${event.time}` : ""}
-              </span>
+              <span>{formatEventSchedule(event)}</span>
             </div>
             <div className="flex items-start gap-2">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0" />

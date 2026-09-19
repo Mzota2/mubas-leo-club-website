@@ -2,6 +2,7 @@ import Link from "next/link"
 import { Calendar, MapPin, Users } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { eventStatusClass, eventStatusLabel, formatEventSchedule, resolveEventStatus } from "@/lib/content/events"
 import type { Event } from "@/lib/types"
 
 interface EventCardProps {
@@ -18,6 +19,8 @@ export function EventCard({ event, href }: EventCardProps) {
     fundraising: "bg-cyan-500",
     social: "bg-pink-500",
   }
+
+  const status = resolveEventStatus(event)
 
   const content = (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow group">
@@ -36,6 +39,9 @@ export function EventCard({ event, href }: EventCardProps) {
         <Badge className={`absolute top-2 left-2 ${categoryColors[event.category]} text-white border-none`}>
           {event.category}
         </Badge>
+        <Badge className={`absolute top-2 right-2 ${eventStatusClass(status)}`}>
+          {eventStatusLabel(status)}
+        </Badge>
       </div>
       <CardContent className="p-4 space-y-2">
         <h3 className="font-semibold text-lg line-clamp-2">{event.title}</h3>
@@ -43,9 +49,7 @@ export function EventCard({ event, href }: EventCardProps) {
         <div className="flex flex-col gap-1 text-sm text-gray-500">
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
-            <span>
-              {new Date(event.date).toLocaleDateString()} at {event.time}
-            </span>
+            <span>{formatEventSchedule(event)}</span>
           </div>
           <div className="flex min-w-0 items-center gap-2">
             <MapPin className="h-4 w-4 shrink-0" />

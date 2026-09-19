@@ -210,19 +210,29 @@ export async function getEvent(eventId: string): Promise<Event | null> {
 }
 
 export async function createEvent(eventData: Omit<Event, "id">) {
-  const docRef = await addDoc(collection(db, "events"), {
-    ...eventData,
-    createdAt: Timestamp.now().toDate().toISOString(),
-    updatedAt: Timestamp.now().toDate().toISOString(),
-  })
+  const docRef = await addDoc(
+    collection(db, "events"),
+    omitUndefined({
+      ...eventData,
+      createdAt: Timestamp.now().toDate().toISOString(),
+      updatedAt: Timestamp.now().toDate().toISOString(),
+    } as Record<string, unknown>),
+  )
   return docRef.id
 }
 
-export async function updateEvent(eventId: string, eventData: Partial<Event>) {
-  await updateDoc(doc(db, "events", eventId), {
-    ...eventData,
+export async function updateEvent(eventId: string, eventData: Partial<Event> & { endDate?: string | null }) {
+  const { endDate, ...rest } = eventData
+  const payload = omitUndefined({
+    ...rest,
     updatedAt: Timestamp.now().toDate().toISOString(),
-  })
+  } as Record<string, unknown>)
+  if (endDate === null || endDate === "") {
+    payload.endDate = deleteField()
+  } else if (endDate) {
+    payload.endDate = endDate
+  }
+  await updateDoc(doc(db, "events", eventId), payload)
 }
 
 export async function deleteEvent(eventId: string) {

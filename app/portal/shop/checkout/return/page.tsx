@@ -7,6 +7,7 @@ import { PaymentResultScreen } from "@/components/payments/payment-result"
 import { verifyPaymentDetails } from "@/lib/paychangu/client"
 import { readTxRef } from "@/lib/payments/tx-ref"
 import { useCartStore } from "@/lib/store/cart-store"
+import { useShopPaths } from "@/components/shop/shop-paths"
 import type { PaymentReceipt } from "@/lib/payments/types"
 
 export default function ShopCheckoutReturnPage() {
@@ -24,6 +25,7 @@ export default function ShopCheckoutReturnPage() {
 }
 
 function ShopCheckoutReturnContent() {
+  const paths = useShopPaths()
   const searchParams = useSearchParams()
   const txRef = readTxRef(searchParams)
   const clearCart = useCartStore((state) => state.clearCart)
@@ -63,10 +65,10 @@ function ShopCheckoutReturnContent() {
       successDetail={`Reference: ${txRef}. We will process delivery next.`}
       failedTitle="We could not confirm this shop payment."
       failedDetail={`If you were charged, share this reference with an admin: ${txRef || "—"}. You can try checkout again.`}
-      primaryHref={status === "success" ? "/portal/shop/orders" : "/portal/shop/checkout"}
-      primaryLabel={status === "success" ? "View orders" : "Back to checkout"}
-      secondaryHref="/portal/payments"
-      secondaryLabel="Payment receipts"
+      primaryHref={status === "success" ? (paths.surface === "portal" ? paths.orders : paths.home) : paths.checkout}
+      primaryLabel={status === "success" ? (paths.surface === "portal" ? "View orders" : "Back to shop") : "Back to checkout"}
+      secondaryHref={paths.surface === "portal" ? paths.payments : paths.home}
+      secondaryLabel={paths.surface === "portal" ? "Payment receipts" : "Continue shopping"}
     />
   )
 }

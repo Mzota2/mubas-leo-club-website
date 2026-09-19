@@ -7,18 +7,19 @@ import { Button } from "@/components/ui/button"
 import { ProductArt } from "@/components/shop/product-art"
 import { useCartStore } from "@/lib/store/cart-store"
 import { formatMoney } from "@/lib/utils/format"
-import { portalCanvasMuted, portalCanvasTitle } from "@/components/portal/styles"
 import { cartLineToProduct, DELIVERY_FEE } from "@/lib/shop/checkout"
+import { useShopPaths } from "@/components/shop/shop-paths"
 
 export default function CartPage() {
   const router = useRouter()
+  const paths = useShopPaths()
   const { items, removeItem, updateQuantity, getTotalPrice, clearCart } = useCartStore()
   const subtotal = getTotalPrice()
   const total = subtotal + (items.length > 0 ? DELIVERY_FEE : 0)
 
   return (
     <div className="space-y-5 px-4 py-5 lg:px-6 lg:py-8">
-      <div className={`flex items-center justify-between ${portalCanvasTitle}`}>
+      <div className={`flex items-center justify-between ${paths.titleClass}`}>
         <div className="flex items-center gap-1">
           <button type="button" onClick={() => router.back()} className="rounded-md p-1" aria-label="Back">
             <ChevronLeft className="h-6 w-6" />
@@ -37,7 +38,7 @@ export default function CartPage() {
           <p className="font-semibold text-neutral-900">Your cart is empty</p>
           <p className="mt-1 text-sm text-neutral-600">Pick a category and add something simple.</p>
           <Button asChild className="mt-5 rounded-md bg-leo-primary text-white hover:bg-leo-primary-dark">
-            <Link href="/portal/shop">Continue shopping</Link>
+            <Link href={paths.home}>Continue shopping</Link>
           </Button>
         </div>
       ) : (
@@ -102,7 +103,7 @@ export default function CartPage() {
               <span className="text-leo-primary">{formatMoney(total)}</span>
             </div>
             <Button
-              onClick={() => router.push("/portal/shop/checkout")}
+              onClick={() => router.push(paths.checkout)}
               className="h-11 w-full rounded-md bg-[#F59E0B] text-white hover:bg-[#D97706]"
             >
               Checkout
@@ -111,7 +112,7 @@ export default function CartPage() {
         </>
       )}
 
-      <p className={`text-center text-xs ${portalCanvasMuted}`}>Pay with PayChangu at checkout</p>
+      <p className={`text-center text-xs ${paths.mutedClass}`}>Pay with PayChangu at checkout</p>
     </div>
   )
 }

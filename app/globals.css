@@ -261,17 +261,18 @@ html {
   }
 }
 
+.leo-marquee,
 .offer-marquee {
-  animation-name: offer-marquee;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
+  animation: offer-marquee 24s linear infinite;
 }
 
+.leo-marquee-wrap:hover .leo-marquee,
 .offers-marquee-wrap:hover .offer-marquee {
   animation-play-state: paused;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .leo-marquee,
   .offer-marquee {
     animation: none;
   }

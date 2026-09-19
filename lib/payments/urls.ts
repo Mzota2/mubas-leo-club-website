@@ -13,7 +13,7 @@ export function returnPathForKind(kind?: PaymentKind | string | null) {
     case "joining":
       return "/portal/join-fee/return"
     case "order":
-      return "/portal/shop/checkout/return"
+      return "/shop/checkout/return"
     default:
       return "/portal/payments"
   }

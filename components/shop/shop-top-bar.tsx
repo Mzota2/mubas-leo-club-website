@@ -6,15 +6,17 @@ import { AlignJustify, ChevronLeft, ShoppingCart } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useCartStore } from "@/lib/store/cart-store"
 import { useAuth } from "@/lib/hooks/use-auth"
-import { portalCanvasTitle } from "@/components/portal/styles"
+import { useShopPaths } from "@/components/shop/shop-paths"
 
 export function ShopTopBar({ title }: { title: string }) {
   const router = useRouter()
   const { user } = useAuth()
+  const paths = useShopPaths()
   const totalItems = useCartStore((state) => state.getTotalItems())
+  const showOrders = paths.surface === "portal" && Boolean(user)
 
   return (
-    <div className={`flex items-center justify-between gap-3 ${portalCanvasTitle}`}>
+    <div className={`flex items-center justify-between gap-3 ${paths.titleClass}`}>
       <div className="flex min-w-0 items-center gap-1">
         <button type="button" onClick={() => router.back()} className="rounded-md p-1" aria-label="Back">
           <ChevronLeft className="h-6 w-6" />
@@ -22,9 +24,9 @@ export function ShopTopBar({ title }: { title: string }) {
         <h1 className="truncate text-xl font-semibold">{title}</h1>
       </div>
       <div className="flex items-center gap-2">
-        {user ? (
+        {showOrders ? (
           <Link
-            href="/portal/shop/orders"
+            href={paths.orders}
             className="rounded-md bg-[#7F1D1D] p-2 text-white"
             aria-label="Orders"
           >
@@ -32,7 +34,7 @@ export function ShopTopBar({ title }: { title: string }) {
           </Link>
         ) : null}
         <Link
-          href="/portal/shop/cart"
+          href={paths.cart}
           className="relative rounded-md bg-[#7F1D1D] p-2 text-white"
           aria-label="Cart"
         >

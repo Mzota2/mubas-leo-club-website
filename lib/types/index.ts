@@ -73,10 +73,11 @@ export interface Event {
   description: string
   category: "health" | "environment" | "community" | "meeting" | "fundraising" | "social"
   date: string
+  endDate?: string
   time: string
   location: string
   image: string
-  status: "upcoming" | "ongoing" | "completed"
+  status: "upcoming" | "ongoing" | "completed" | "cancelled"
   attendees?: string[]
   createdBy: string
   createdAt: string

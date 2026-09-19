@@ -13,7 +13,7 @@ import { initiatePayment } from "@/lib/paychangu/client"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 import { formatMoney } from "@/lib/utils/format"
-import { portalCanvasMuted, portalCanvasTitle } from "@/components/portal/styles"
+import { useShopPaths } from "@/components/shop/shop-paths"
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
@@ -23,6 +23,7 @@ export default function CheckoutPage() {
   const router = useRouter()
   const { toast } = useToast()
   const { user } = useAuth()
+  const paths = useShopPaths()
   const { items, getTotalPrice } = useCartStore()
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
@@ -36,9 +37,9 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (items.length === 0) {
-      router.replace("/portal/shop/cart")
+      router.replace(paths.cart)
     }
-  }, [items.length, router])
+  }, [items.length, paths.cart, router])
 
   useEffect(() => {
     if (!user) return
@@ -86,7 +87,7 @@ export default function CheckoutPage() {
         items: orderItems,
         subtotal,
         deliveryFee: DELIVERY_FEE,
-        returnUrl: `${window.location.origin}/portal/shop/checkout/return`,
+        returnUrl: `${window.location.origin}${paths.checkoutReturn}`,
         customization: {
           title: "MUBAS Leo Club shop",
           description: `Order of ${orderItems.length} item${orderItems.length === 1 ? "" : "s"} for ${formatMoney(total)}`,
@@ -114,7 +115,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="space-y-5 px-4 py-5 lg:px-6 lg:py-8">
-      <div className={`flex items-center gap-1 ${portalCanvasTitle}`}>
+      <div className={`flex items-center gap-1 ${paths.titleClass}`}>
         <button type="button" onClick={() => router.back()} className="rounded-md p-1" aria-label="Back">
           <ChevronLeft className="h-6 w-6" />
         </button>
@@ -215,7 +216,7 @@ export default function CheckoutPage() {
         {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         {isProcessing ? "Redirecting to PayChangu..." : `Pay ${formatMoney(total)}`}
       </Button>
-      <p className={`text-center text-xs ${portalCanvasMuted}`}>By placing this order you agree to club shop terms.</p>
+      <p className={`text-center text-xs ${paths.mutedClass}`}>By placing this order you agree to club shop terms.</p>
     </div>
   )
 }

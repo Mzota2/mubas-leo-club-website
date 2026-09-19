@@ -10,10 +10,11 @@ import { getShopCategory, getShopProduct } from "@/lib/shop/catalog"
 import { useCartStore } from "@/lib/store/cart-store"
 import { useToast } from "@/hooks/use-toast"
 import { formatMoney } from "@/lib/utils/format"
-import { portalCanvasMuted } from "@/components/portal/styles"
+import { useShopPaths } from "@/components/shop/shop-paths"
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const paths = useShopPaths()
   const product = getShopProduct(id)
   const addItem = useCartStore((state) => state.addItem)
   const { toast } = useToast()
@@ -53,7 +54,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       >
         Add to Cart
       </Button>
-      <Link href={`/portal/shop/category/${product.category}`} className={`block text-center text-sm ${portalCanvasMuted}`}>
+      <Link href={paths.category(product.category)} className={`block text-center text-sm ${paths.mutedClass}`}>
         See more {category?.label}
       </Link>
     </div>

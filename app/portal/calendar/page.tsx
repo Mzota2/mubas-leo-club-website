@@ -14,7 +14,8 @@ import { useBirthdayCalendar } from "@/lib/hooks/use-birthday-posts"
 import { usePlatformSettings } from "@/lib/hooks/use-settings"
 import { birthdayMonthDay, nextBirthday, upcomingBirthdays } from "@/lib/content/academic"
 import { birthdayStyle, celebrationEntries } from "@/lib/content/birthdays"
-import { formatDate, withLeoTitle } from "@/lib/utils/format"
+import { withLeoTitle } from "@/lib/utils/format"
+import { eventOccursOnDay, eventOverlapsMonth, formatEventSchedule, isLiveEvent } from "@/lib/content/events"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { cn } from "@/lib/utils"
 
@@ -57,10 +58,9 @@ function CalendarPageInner() {
   }, [celebrations, focusId, searchParams])
 
   const monthEvents = useMemo(() => {
-    return liveEvents.filter((event) => {
-      const date = new Date(event.date)
-      return date.getMonth() === currentDate.getMonth() && date.getFullYear() === currentDate.getFullYear()
-    })
+    return liveEvents.filter((event) =>
+      eventOverlapsMonth(event, currentDate.getFullYear(), currentDate.getMonth()),
+    )
   }, [liveEvents, currentDate])
 
   const monthBirthdays = useMemo(() => {
@@ -105,7 +105,9 @@ function CalendarPageInner() {
   }
 
   const getItemsForDay = (day: number) => {
-    const events = monthEvents.filter((event) => new Date(event.date).getDate() === day)
+    const events = monthEvents.filter((event) =>
+      eventOccursOnDay(event, currentDate.getFullYear(), currentDate.getMonth(), day),
+    )
     const birthdays = monthBirthdays.filter((entry) => birthdayMonthDay(entry.dateOfBirth)?.day === day)
     return { events, birthdays }
   }
@@ -244,12 +246,12 @@ function CalendarPageInner() {
           <CardTitle>Upcoming events</CardTitle>
         </CardHeader>
         <CardContent>
-          {liveEvents.filter((event) => event.status === "upcoming").length === 0 ? (
+          {liveEvents.filter((event) => isLiveEvent(event)).length === 0 ? (
             <p className="text-sm text-muted-foreground">No upcoming events yet.</p>
           ) : (
             <div className="space-y-4">
               {liveEvents
-                .filter((event) => event.status === "upcoming")
+                .filter((event) => isLiveEvent(event))
                 .sort((a, b) => a.date.localeCompare(b.date))
                 .slice(0, 8)
                 .map((event) => (
@@ -264,7 +266,7 @@ function CalendarPageInner() {
                       </div>
                       <div className="min-w-0">
                         <h3 className="mb-1 font-semibold">{event.title}</h3>
-                        <p className="text-sm text-gray-600">{formatDate(event.date)}</p>
+                        <p className="text-sm text-gray-600">{formatEventSchedule(event)}</p>
                         <Badge variant="outline" className="mt-1">
                           {event.category}
                         </Badge>

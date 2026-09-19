@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { portalCanvasTitle } from "@/components/portal/styles"
 import { formatMoney } from "@/lib/utils/format"
 import type { SpecialOffer } from "@/lib/types"
+import { useShopPaths } from "@/components/shop/shop-paths"
 
 function offerTag(offer: SpecialOffer) {
   const source = offer.tagline || offer.title
@@ -19,9 +19,11 @@ function OfferCard({
   offer: SpecialOffer
   duplicate?: boolean
 }) {
+  const paths = useShopPaths()
+
   return (
     <Link
-      href={`/portal/shop/offers/${offer.id}`}
+      href={paths.offer(offer.id)}
       tabIndex={duplicate ? -1 : undefined}
       aria-hidden={duplicate || undefined}
       className="relative w-40 shrink-0 overflow-hidden rounded-md bg-white lg:w-52"
@@ -41,6 +43,7 @@ function OfferCard({
 }
 
 export function SpecialOffersCarousel({ offers }: { offers: SpecialOffer[] }) {
+  const paths = useShopPaths()
   const [reduceMotion, setReduceMotion] = useState(false)
 
   useEffect(() => {
@@ -63,7 +66,7 @@ export function SpecialOffersCarousel({ offers }: { offers: SpecialOffer[] }) {
   return (
     <section>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className={`font-semibold ${portalCanvasTitle}`}>Special offers</h2>
+        <h2 className={`font-semibold ${paths.titleClass}`}>Special offers</h2>
       </div>
 
       {animate ? (

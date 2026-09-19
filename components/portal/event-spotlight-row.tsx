@@ -6,7 +6,7 @@ import { Calendar, MapPin, X } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import { portalCanvasTitle } from "@/components/portal/styles"
 import { DEFAULT_EVENTS, EVENT_CATEGORY_LABELS, eventImage, withFallback } from "@/lib/content/defaults"
-import { formatDate } from "@/lib/utils/format"
+import { formatEventSchedule, isLiveEvent, resolveEventStatus } from "@/lib/content/events"
 import type { Event } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -17,42 +17,117 @@ function eventTag(event: Event) {
   return compact ? `#${compact}` : `#${EVENT_CATEGORY_LABELS[event.category]}`
 }
 
+function EventPosterCard({
+  event,
+  duplicate = false,
+  onOpen,
+}: {
+  event: Event
+  duplicate?: boolean
+  onOpen: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      tabIndex={duplicate ? -1 : undefined}
+      aria-hidden={duplicate || undefined}
+      className="relative w-40 shrink-0 overflow-hidden rounded-md bg-gradient-to-t from-black/20 via-black/20 to-transparent text-left lg:w-52"
+    >
+      <img src={eventImage(event)} alt={duplicate ? "" : event.title} className="h-52 w-full object-cover" />
+      <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent px-2.5 pb-2.5 pt-8">
+        <span className="block text-sm font-semibold text-white">{eventTag(event)}</span>
+        <span className="mt-0.5 block text-xs text-white/90">{event.title}</span>
+      </span>
+    </button>
+  )
+}
+
 export function EventSpotlightRow({ events }: { events?: Event[] }) {
   const items = useMemo(() => {
     const source = withFallback(events, DEFAULT_EVENTS)
     const live = source
-      .filter((event) => event.status !== "completed")
+      .filter((event) => isLiveEvent(event))
       .sort((a, b) => a.date.localeCompare(b.date))
     return (live.length > 0 ? live : source).slice(0, 10)
   }, [events])
   const [storyIndex, setStoryIndex] = useState<number | null>(null)
+  const trackRef = useRef<HTMLDivElement>(null)
+  const pausedRef = useRef(false)
+
+  const animate = items.length > 1
+  const unit = animate
+    ? Array.from({ length: Math.max(2, Math.ceil(8 / items.length)) }, () => items).flat()
+    : items
+  const track = animate ? [...unit, ...unit] : unit
+
+  useEffect(() => {
+    pausedRef.current = storyIndex !== null
+  }, [storyIndex])
+
+  useEffect(() => {
+    const node = trackRef.current
+    if (!animate || !node) return
+
+    let offset = 0
+    let last = performance.now()
+    let frame = 0
+
+    const tick = (now: number) => {
+      const elapsed = now - last
+      last = now
+      if (!pausedRef.current) {
+        const loop = node.scrollWidth / 2
+        if (loop > 0) {
+          offset = (offset + elapsed * 0.07) % loop
+          node.style.transform = `translate3d(-${offset}px, 0, 0)`
+        }
+      }
+      frame = window.requestAnimationFrame(tick)
+    }
+
+    frame = window.requestAnimationFrame(tick)
+    return () => window.cancelAnimationFrame(frame)
+  }, [animate, track.length])
 
   if (items.length === 0) return null
 
   return (
-    <section>
+    <section className="min-w-0">
       <div className="mb-3 flex items-center justify-between">
         <h2 className={`font-semibold ${portalCanvasTitle}`}>Upcoming events</h2>
         <Link href="/portal/events" className="rounded-md bg-white/90 px-2.5 py-1 text-sm font-medium text-neutral-800 lg:bg-transparent lg:px-0 lg:text-leo-primary">
           View all
         </Link>
       </div>
-      <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
-        {items.map((event, index) => (
-          <button
-            key={event.id}
-            type="button"
-            onClick={() => setStoryIndex(index)}
-            className="relative w-40 shrink-0 overflow-hidden rounded-md bg-white text-left lg:w-52"
-          >
-            <img src={eventImage(event)} alt={event.title} className="h-52 w-full object-cover" />
-            <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent px-2.5 pb-2.5 pt-8">
-              <span className="block text-sm font-semibold text-white">{eventTag(event)}</span>
-              <span className="mt-0.5 block text-xs text-white/90">{event.title}</span>
-            </span>
-          </button>
-        ))}
-      </div>
+      {animate ? (
+        <div
+          className="min-w-0 overflow-hidden"
+          onMouseEnter={() => {
+            pausedRef.current = true
+          }}
+          onMouseLeave={() => {
+            pausedRef.current = storyIndex !== null
+          }}
+        >
+          <div ref={trackRef} className="flex w-max gap-3 will-change-transform">
+            {track.map((event, index) => (
+              <EventPosterCard
+                key={`${event.id}-${index}`}
+                event={event}
+                duplicate={index >= unit.length}
+                onOpen={() => setStoryIndex(items.findIndex((item) => item.id === event.id))}
+              />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
+          {items.map((event, index) => (
+            <EventPosterCard key={event.id} event={event} onOpen={() => setStoryIndex(index)} />
+          ))}
+        </div>
+      )}
 
       {storyIndex !== null ? (
         <EventStoryViewer
@@ -173,13 +248,12 @@ function EventStoryViewer({
               </div>
 
               <div className="mt-auto space-y-2 px-5 pb-6 text-white">
-                <p className={cn("text-xs font-medium uppercase tracking-wide text-white/80")}>{event.status}</p>
+                <p className={cn("text-xs font-medium uppercase tracking-wide text-white/80")}>{resolveEventStatus(event)}</p>
                 <h3 className="text-2xl font-semibold leading-tight">{event.title}</h3>
                 {event.description ? <p className="text-sm text-white/90">{event.description}</p> : null}
                 <p className="flex items-center gap-2 text-sm text-white/90">
                   <Calendar className="h-4 w-4" />
-                  {formatDate(event.date)}
-                  {event.time ? ` · ${event.time}` : ""}
+                  {formatEventSchedule(event)}
                 </p>
                 {event.location ? (
                   <p className="flex items-center gap-2 text-sm text-white/90">

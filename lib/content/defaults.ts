@@ -44,6 +44,22 @@ export const DEFAULT_EVENTS: Event[] = [
     updatedAt: now,
   },
   {
+    id: "default-sight-fundraiser",
+    title: "Walk for Sight Fundraiser",
+    description: "A two-week campaign supporting vision care for students in our community.",
+    category: "fundraising",
+    date: "2026-10-01",
+    endDate: "2026-10-14",
+    time: "",
+    location: "MUBAS Campus, Blantyre",
+    image: media.posters.bloodDrive,
+    status: "upcoming",
+    attendees: [],
+    createdBy: "system",
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
     id: "default-community-visit",
     title: "Community Support Visit",
     description: "Visiting people with special needs and supporting needy students",
@@ -100,15 +116,7 @@ export function withFallback<T>(items: T[] | undefined, defaults: T[]): T[] {
   return items && items.length > 0 ? items : defaults
 }
 
-export function isPastEvent(event: Event, nowDate = new Date()) {
-  if (event.status === "completed") return true
-  if (event.status === "ongoing") return false
-  const date = new Date(event.date)
-  if (Number.isNaN(date.getTime())) return false
-  const today = new Date(nowDate)
-  today.setHours(0, 0, 0, 0)
-  return date < today
-}
+export { isPastEvent } from "@/lib/content/events"
 
 const LEADER_POSITION_RANK = [
   "president",

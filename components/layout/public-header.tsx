@@ -113,12 +113,6 @@ export function PublicHeader() {
                   <DropdownMenuItem asChild>
                     <Link href="/portal/shop" className="cursor-pointer">
                       <ShoppingBag className="mr-2 h-4 w-4" />
-                      Member shop
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/shop" className="cursor-pointer">
-                      <ShoppingBag className="mr-2 h-4 w-4" />
                       Shop
                     </Link>
                   </DropdownMenuItem>

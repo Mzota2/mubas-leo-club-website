@@ -19,16 +19,24 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { useCreateEvent, useDeleteEvent, useEvents, useUpdateEvent } from "@/lib/hooks/use-events"
 import type { Event } from "@/lib/types"
-import { Plus, Calendar, Pencil, Trash2, Users } from "lucide-react"
+import { Plus, Calendar, Pencil, Trash2, Upload, Users } from "lucide-react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
 import { AdminPageHeader } from "@/components/admin/page-header"
 import { AdminStatCard } from "@/components/admin/stat-card"
 import { AdminEmptyState } from "@/components/admin/empty-state"
-import { formatDate } from "@/lib/utils/format"
+import {
+  eventStatusClass,
+  eventStatusLabel,
+  formatEventSchedule,
+  isLiveEvent,
+  isPastEvent,
+  resolveEventStatus,
+} from "@/lib/content/events"
 
 export default function EventsPage() {
   const { firebaseUser } = useAuth()
@@ -46,11 +54,14 @@ export default function EventsPage() {
     description: "",
     category: "health" as Event["category"],
     date: "",
+    endDate: "",
     time: "",
     location: "",
     image: "",
-    status: "upcoming" as Event["status"],
+    cancelled: false,
   })
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState("")
 
   const categoryMeta: Record<Event["category"], { name: string; color: string }> = {
     health: { name: "Health", color: "#EF4444" },
@@ -64,8 +75,8 @@ export default function EventsPage() {
   const stats = useMemo(() => {
     const list = events ?? []
     const total = list.length
-    const upcoming = list.filter((e) => e.status === "upcoming").length
-    const completed = list.filter((e) => e.status === "completed").length
+    const upcoming = list.filter((e) => isLiveEvent(e)).length
+    const completed = list.filter((e) => isPastEvent(e) && resolveEventStatus(e) !== "cancelled").length
     const avgAttendance = total
       ? Math.round(list.reduce((sum, e) => sum + (e.attendees?.length ?? 0), 0) / total)
       : 0
@@ -95,11 +106,13 @@ export default function EventsPage() {
       description: "",
       category: "health",
       date: "",
+      endDate: "",
       time: "",
       location: "",
       image: "",
-      status: "upcoming",
+      cancelled: false,
     })
+    setUploadError("")
     setIsFormOpen(true)
   }
 
@@ -109,12 +122,14 @@ export default function EventsPage() {
       title: event.title,
       description: event.description,
       category: event.category,
-      date: event.date,
-      time: event.time,
-      location: event.location,
-      image: event.image,
-      status: event.status,
+      date: event.date?.slice(0, 10) ?? "",
+      endDate: event.endDate?.slice(0, 10) ?? "",
+      time: event.time ?? "",
+      location: event.location ?? "",
+      image: event.image ?? "",
+      cancelled: event.status === "cancelled",
     })
+    setUploadError("")
     setIsFormOpen(true)
   }
 
@@ -123,28 +138,76 @@ export default function EventsPage() {
     setIsDeleteOpen(true)
   }
 
+  const isFundraising = formValues.category === "fundraising"
+  const previewStatus = resolveEventStatus({
+    date: formValues.date,
+    endDate: isFundraising ? formValues.endDate : undefined,
+    category: formValues.category,
+    status: formValues.cancelled ? "cancelled" : "upcoming",
+  })
+  const isBusy = createEvent.isPending || updateEvent.isPending || uploading
+
+  const handleUploadPoster = async (file: File) => {
+    setUploading(true)
+    setUploadError("")
+    try {
+      const form = new FormData()
+      form.append("file", file)
+      form.append("folder", "leo-club/events")
+      const res = await fetch("/api/upload", { method: "POST", body: form })
+      const json = await res.json().catch(() => null)
+      const url = json?.data?.secure_url || json?.data?.url
+      if (!res.ok || !url) {
+        setUploadError(json?.error || "Poster upload failed. Try again or paste an image URL.")
+        return
+      }
+      setFormValues((values) => ({ ...values, image: url }))
+    } catch {
+      setUploadError("Poster upload failed. Try again or paste an image URL.")
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const handleSubmit = async () => {
     if (!formValues.title.trim()) return
     if (!formValues.description.trim()) return
     if (!formValues.date.trim()) return
-    if (!formValues.time.trim()) return
     if (!formValues.location.trim()) return
+    if (isFundraising && !formValues.endDate.trim()) return
+    if (isFundraising && formValues.endDate < formValues.date) return
 
     const createdBy = firebaseUser?.uid || "system"
     const image = formValues.image?.trim() || "/placeholder-logo.png"
+    const status = resolveEventStatus({
+      date: formValues.date,
+      endDate: isFundraising ? formValues.endDate : undefined,
+      category: formValues.category,
+      status: formValues.cancelled ? "cancelled" : "upcoming",
+    })
+    const payload = {
+      title: formValues.title.trim(),
+      description: formValues.description.trim(),
+      category: formValues.category,
+      date: formValues.date,
+      time: formValues.time.trim(),
+      location: formValues.location.trim(),
+      image,
+      status,
+    }
 
     if (selectedEvent) {
       await updateEvent.mutateAsync({
         eventId: selectedEvent.id,
         data: {
-          ...formValues,
-          image,
+          ...payload,
+          endDate: isFundraising ? formValues.endDate : null,
         },
       })
     } else {
       await createEvent.mutateAsync({
-        ...formValues,
-        image,
+        ...payload,
+        ...(isFundraising ? { endDate: formValues.endDate } : {}),
         attendees: [],
         createdBy,
       } as Omit<Event, "id">)
@@ -228,29 +291,28 @@ export default function EventsPage() {
             ) : (
               [...(events ?? [])]
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                .map((event) => (
+                .map((event) => {
+                const status = resolveEventStatus(event)
+                return (
                 <div key={event.id} className="flex flex-col gap-3 rounded-md border border-border/60 bg-[#FBF9F6] p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    {event.image ? (
+                      <img src={event.image} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" />
+                    ) : null}
+                    <div className="min-w-0">
                     <h3 className="font-semibold">{event.title}</h3>
                     <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                      <span>{formatDate(event.date)}{event.time ? ` · ${event.time}` : ""}</span>
+                      <span>{formatEventSchedule(event)}</span>
                       <Badge variant="outline">{categoryMeta[event.category].name}</Badge>
                       <span>{event.attendees?.length ?? 0} attendees</span>
                       <span className="truncate">{event.location}</span>
                     </div>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Badge
-                      className={
-                        event.status === "upcoming"
-                          ? "border-transparent bg-sky-500 text-white"
-                          : event.status === "ongoing"
-                            ? "border-transparent bg-amber-500 text-white"
-                            : "border-transparent bg-emerald-500 text-white"
-                      }
-                    >
-                      {event.status}
+                    <Badge className={eventStatusClass(status)}>
+                      {eventStatusLabel(status)}
                     </Badge>
                     <Button variant="outline" size="icon" onClick={() => openEdit(event)}>
                       <Pencil className="h-4 w-4" />
@@ -260,14 +322,15 @@ export default function EventsPage() {
                     </Button>
                   </div>
                 </div>
-              ))
+              )
+              })
             )}
           </div>
         </CardContent>
       </Card>
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="max-h-[min(90dvh,calc(100%-2rem))] overflow-y-auto sm:max-w-[640px]">
           <DialogHeader>
             <DialogTitle>{selectedEvent ? "Edit Event" : "Create Event"}</DialogTitle>
           </DialogHeader>
@@ -279,7 +342,7 @@ export default function EventsPage() {
                 id="title"
                 value={formValues.title}
                 onChange={(e) => setFormValues((v) => ({ ...v, title: e.target.value }))}
-                disabled={createEvent.isPending || updateEvent.isPending}
+                disabled={isBusy}
               />
             </div>
 
@@ -289,72 +352,97 @@ export default function EventsPage() {
                 id="description"
                 value={formValues.description}
                 onChange={(e) => setFormValues((v) => ({ ...v, description: e.target.value }))}
-                disabled={createEvent.isPending || updateEvent.isPending}
+                disabled={isBusy}
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Category</Label>
-                <Select
-                  value={formValues.category}
-                  onValueChange={(value) => setFormValues((v) => ({ ...v, category: value as Event["category"] }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="health">Health</SelectItem>
-                    <SelectItem value="environment">Environment</SelectItem>
-                    <SelectItem value="community">Community</SelectItem>
-                    <SelectItem value="meeting">Meetings</SelectItem>
-                    <SelectItem value="fundraising">Fundraising</SelectItem>
-                    <SelectItem value="social">Social</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label>Status</Label>
-                <Select
-                  value={formValues.status}
-                  onValueChange={(value) => setFormValues((v) => ({ ...v, status: value as Event["status"] }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="upcoming">Upcoming</SelectItem>
-                    <SelectItem value="ongoing">Ongoing</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="grid gap-2">
+              <Label>Category</Label>
+              <Select
+                value={formValues.category}
+                onValueChange={(value) =>
+                  setFormValues((v) => ({
+                    ...v,
+                    category: value as Event["category"],
+                    endDate: value === "fundraising" && !v.endDate ? v.date : v.endDate,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="health">Health</SelectItem>
+                  <SelectItem value="environment">Environment</SelectItem>
+                  <SelectItem value="community">Community</SelectItem>
+                  <SelectItem value="meeting">Meetings</SelectItem>
+                  <SelectItem value="fundraising">Fundraising</SelectItem>
+                  <SelectItem value="social">Social</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="date">Date</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formValues.date}
-                  onChange={(e) => setFormValues((v) => ({ ...v, date: e.target.value }))}
-                  disabled={createEvent.isPending || updateEvent.isPending}
-                />
+            {isFundraising ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="date">Start date</Label>
+                  <Input
+                    id="date"
+                    type="date"
+                    value={formValues.date}
+                    onChange={(e) => setFormValues((v) => ({ ...v, date: e.target.value }))}
+                    disabled={isBusy}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="endDate">End date</Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    min={formValues.date || undefined}
+                    value={formValues.endDate}
+                    onChange={(e) => setFormValues((v) => ({ ...v, endDate: e.target.value }))}
+                    disabled={isBusy}
+                  />
+                </div>
               </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="date">Event date</Label>
+                  <Input
+                    id="date"
+                    type="date"
+                    value={formValues.date}
+                    onChange={(e) => setFormValues((v) => ({ ...v, date: e.target.value }))}
+                    disabled={isBusy}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="time">Time</Label>
+                  <Input
+                    id="time"
+                    type="time"
+                    value={formValues.time}
+                    onChange={(e) => setFormValues((v) => ({ ...v, time: e.target.value }))}
+                    disabled={isBusy}
+                  />
+                </div>
+              </div>
+            )}
 
+            {isFundraising ? (
               <div className="grid gap-2">
-                <Label htmlFor="time">Time</Label>
+                <Label htmlFor="time">Daily time (optional)</Label>
                 <Input
                   id="time"
                   type="time"
                   value={formValues.time}
                   onChange={(e) => setFormValues((v) => ({ ...v, time: e.target.value }))}
-                  disabled={createEvent.isPending || updateEvent.isPending}
+                  disabled={isBusy}
                 />
               </div>
-            </div>
+            ) : null}
 
             <div className="grid gap-2">
               <Label htmlFor="location">Location</Label>
@@ -362,19 +450,55 @@ export default function EventsPage() {
                 id="location"
                 value={formValues.location}
                 onChange={(e) => setFormValues((v) => ({ ...v, location: e.target.value }))}
-                disabled={createEvent.isPending || updateEvent.isPending}
+                disabled={isBusy}
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="image">Image URL</Label>
+              <Label>Event poster</Label>
+              <Input
+                type="file"
+                accept="image/*"
+                disabled={isBusy}
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (file) void handleUploadPoster(file)
+                }}
+              />
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Upload className="h-3.5 w-3.5" />
+                {uploading ? "Uploading poster..." : "Upload a poster, or paste an image URL below."}
+              </div>
+              {uploadError ? <p className="text-xs text-rose-600">{uploadError}</p> : null}
               <Input
                 id="image"
+                placeholder="https://"
                 value={formValues.image}
                 onChange={(e) => setFormValues((v) => ({ ...v, image: e.target.value }))}
-                disabled={createEvent.isPending || updateEvent.isPending}
+                disabled={isBusy}
+              />
+              {formValues.image ? (
+                <div className="overflow-hidden rounded-md border bg-neutral-100">
+                  <img src={formValues.image} alt="Event poster preview" className="max-h-48 w-full object-contain" />
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex items-center justify-between rounded-md border px-3 py-2">
+              <div>
+                <Label htmlFor="cancelled">Cancelled</Label>
+                <p className="text-xs text-muted-foreground">Status otherwise follows the event date.</p>
+              </div>
+              <Switch
+                id="cancelled"
+                checked={formValues.cancelled}
+                onCheckedChange={(checked) => setFormValues((values) => ({ ...values, cancelled: checked }))}
+                disabled={isBusy}
               />
             </div>
+            <p className="text-sm text-muted-foreground">
+              Current status: <span className="font-medium text-foreground">{eventStatusLabel(previewStatus)}</span>
+            </p>
           </div>
 
           <DialogFooter>
@@ -384,7 +508,7 @@ export default function EventsPage() {
             <Button
               className="bg-leo-primary hover:bg-leo-primary-dark text-white"
               onClick={handleSubmit}
-              disabled={createEvent.isPending || updateEvent.isPending}
+              disabled={isBusy}
             >
               {selectedEvent ? "Save Changes" : "Create Event"}
             </Button>

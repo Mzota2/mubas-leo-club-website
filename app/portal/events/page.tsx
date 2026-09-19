@@ -9,6 +9,7 @@ import { EventCard } from "@/components/common/event-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Search } from "lucide-react"
 import { portalChipClass, portalTabsListClass, portalTabsTriggerClass } from "@/components/portal/styles"
+import { isLiveEvent, isPastEvent } from "@/lib/content/events"
 
 export default function PortalEventsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
@@ -35,8 +36,8 @@ export default function PortalEventsPage() {
       event.category.toLowerCase().includes(q),
   )
 
-  const upcomingEvents = filteredEvents?.filter((e) => e.status === "upcoming")
-  const pastEvents = filteredEvents?.filter((e) => e.status === "completed")
+  const upcomingEvents = filteredEvents?.filter((e) => isLiveEvent(e))
+  const pastEvents = filteredEvents?.filter((e) => isPastEvent(e))
 
   return (
     <div className="px-4 py-6 space-y-6 lg:px-6 lg:py-8">

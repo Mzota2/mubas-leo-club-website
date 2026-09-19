@@ -15,7 +15,7 @@ interface ProductCardProps {
 export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow group">
-      <Link href={`/portal/shop/products/${product.id}`}>
+      <Link href={`/shop/products/${product.id}`}>
         <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
           {product.images[0] ? (
             <img

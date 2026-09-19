@@ -8,12 +8,13 @@ import { ShopTopBar } from "@/components/shop/shop-top-bar"
 import { useCartStore } from "@/lib/store/cart-store"
 import { useToast } from "@/hooks/use-toast"
 import { formatMoney } from "@/lib/utils/format"
-import { portalCanvasMuted } from "@/components/portal/styles"
+import { useShopPaths } from "@/components/shop/shop-paths"
 import { useSpecialOffer } from "@/lib/hooks/use-special-offers"
 import { offerToShopProduct } from "@/lib/shop/offers"
 
 export default function SpecialOfferPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const paths = useShopPaths()
   const { data: offer, isLoading } = useSpecialOffer(id)
   const addItem = useCartStore((state) => state.addItem)
   const { toast } = useToast()
@@ -68,7 +69,7 @@ export default function SpecialOfferPage({ params }: { params: Promise<{ id: str
       >
         Add to Cart
       </Button>
-      <Link href="/portal/shop" className={`block text-center text-sm ${portalCanvasMuted}`}>
+      <Link href={paths.home} className={`block text-center text-sm ${paths.mutedClass}`}>
         Back to shop
       </Link>
     </div>

@@ -37,6 +37,7 @@ import { donationToRecord, feeToRecord, orderToRecord, paymentTotals } from "@/l
 import { PaymentsTable } from "@/components/payments/payments-table"
 import { periodLabel } from "@/lib/membership/billing"
 import { categoryColors } from "@/lib/constants/theme"
+import { formatEventSchedule, isLiveEvent } from "@/lib/content/events"
 import type { Event, User } from "@/lib/types"
 
 const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -134,7 +135,7 @@ export default function AdminDashboard() {
       const date = new Date(event.date)
       return !Number.isNaN(date.getTime()) && date.getFullYear() === currentYear
     })
-    const upcomingEvents = (events ?? []).filter((event) => event.status === "upcoming").length
+    const upcomingEvents = (events ?? []).filter((event) => isLiveEvent(event)).length
 
     const attendees = new Set<string>()
     for (const event of events ?? []) {
@@ -204,7 +205,7 @@ export default function AdminDashboard() {
 
   const upcomingEvents = useMemo(() => {
     return [...(events ?? [])]
-      .filter((event) => event.status === "upcoming" || new Date(event.date).getTime() >= Date.now())
+      .filter((event) => isLiveEvent(event))
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .slice(0, 5)
   }, [events])
@@ -525,11 +526,7 @@ export default function AdminDashboard() {
                       <div className="min-w-0">
                         <p className="truncate font-medium">{event.title}</p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {new Date(event.date).toLocaleDateString("en-GB", {
-                            day: "numeric",
-                            month: "short",
-                          })}
-                          {event.time ? ` · ${event.time}` : ""} · {event.location}
+                          {formatEventSchedule(event)} · {event.location}
                         </p>
                       </div>
                       <Badge variant="secondary" className="capitalize">

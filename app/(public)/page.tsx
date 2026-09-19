@@ -208,7 +208,7 @@ export default function HomePage() {
               </p>
             </div>
             <Button asChild size="lg" className="mt-4 md:mt-0 bg-leo-primary hover:bg-leo-primary-dark text-white">
-              <Link href="/portal/shop">
+              <Link href="/shop">
                 Shop Now
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>

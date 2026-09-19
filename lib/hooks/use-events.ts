@@ -45,7 +45,8 @@ export function useUpdateEvent() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ eventId, data }: { eventId: string; data: Partial<Event> }) => updateEvent(eventId, data),
+    mutationFn: ({ eventId, data }: { eventId: string; data: Partial<Event> & { endDate?: string | null } }) =>
+      updateEvent(eventId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["events"] })
     },

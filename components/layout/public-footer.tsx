@@ -75,6 +75,11 @@ export function PublicFooter() {
                 </Link>
               </li>
               <li>
+                <Link href="/shop" className="hover:text-leo-primary transition-colors inline-block">
+                  Shop
+                </Link>
+              </li>
+              <li>
                 <Link href="/donate" className="hover:text-leo-primary transition-colors inline-block flex items-center gap-1">
                   <Heart className="h-3 w-3" />
                   Donate

@@ -7,13 +7,14 @@ import { ShopSearch } from "@/components/shop/shop-search"
 import { ShopTopBar } from "@/components/shop/shop-top-bar"
 import { ProductArt } from "@/components/shop/product-art"
 import { SpecialOffersCarousel } from "@/components/shop/special-offers-carousel"
-import { portalCanvasTitle } from "@/components/portal/styles"
+import { useShopPaths } from "@/components/shop/shop-paths"
 import { getProductsByCategory, shopCategories, shopProducts } from "@/lib/shop/catalog"
 import { offerIdFromProductId, offerToShopProduct } from "@/lib/shop/offers"
 import { useSpecialOffers } from "@/lib/hooks/use-special-offers"
 import { formatMoney } from "@/lib/utils/format"
 
 export default function ShopPage() {
+  const paths = useShopPaths()
   const [query, setQuery] = useState("")
   const { data: offers = [] } = useSpecialOffers(true)
 
@@ -55,14 +56,14 @@ export default function ShopPage() {
       {!query.trim() ? <SpecialOffersCarousel offers={offers} /> : null}
 
       <section className="space-y-3">
-        <h2 className={`font-semibold ${portalCanvasTitle}`}>Categories</h2>
+        <h2 className={`font-semibold ${paths.titleClass}`}>Categories</h2>
         <div className="grid gap-3 lg:grid-cols-2">
           {filteredCategories.map((category) => {
             const thumbs = getProductsByCategory(category.id).slice(0, 2)
             return (
               <Link
                 key={category.id}
-                href={`/portal/shop/category/${category.id}`}
+                href={paths.category(category.id)}
                 className="flex items-center gap-3 rounded-md bg-white p-2 pr-3 shadow-sm"
               >
                 <p className="w-[4.5rem] shrink-0 text-sm font-semibold leading-tight text-neutral-900 sm:w-24 sm:text-base">
@@ -81,14 +82,14 @@ export default function ShopPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className={`font-semibold ${portalCanvasTitle}`}>In the shop</h2>
+        <h2 className={`font-semibold ${paths.titleClass}`}>In the shop</h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {visibleProducts.map((product) => {
             const offerId = offerIdFromProductId(product.id)
             return (
               <Link
                 key={product.id}
-                href={offerId ? `/portal/shop/offers/${offerId}` : `/portal/shop/products/${product.id}`}
+                href={offerId ? paths.offer(offerId) : paths.product(product.id)}
                 className="overflow-hidden rounded-md bg-white shadow-sm"
               >
                 <ProductArt product={product} className="aspect-square" />

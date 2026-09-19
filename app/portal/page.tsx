@@ -28,6 +28,7 @@ import { canAccessAdmin } from "@/components/portal/nav-config"
 import { SAMPLE_PAYMENTS } from "@/lib/payments/defaults"
 import { donationToRecord, feeToRecord, paymentTotals } from "@/lib/payments/receipt"
 import { formatDate, formatMoney, greetingForHour } from "@/lib/utils/format"
+import { isLiveEvent, formatEventSchedule } from "@/lib/content/events"
 import { useBirthdayCalendar } from "@/lib/hooks/use-birthday-posts"
 import { usePlatformSettings } from "@/lib/hooks/use-settings"
 import { todayBirthdays, upcomingBirthdays } from "@/lib/content/academic"
@@ -48,7 +49,7 @@ export default function PortalDashboard() {
 
   const upcomingEvents = useMemo(() => {
     return [...(events ?? [])]
-      .filter((event) => event.status === "upcoming")
+      .filter((event) => isLiveEvent(event))
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .slice(0, 3)
   }, [events])
@@ -168,7 +169,7 @@ export default function PortalDashboard() {
       </form>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
           <BirthdayStatusRail birthdays={showBirthdays ? todayCelebrations : []} viewerId={user?.id} />
           <EventSpotlightRow events={events} />
 
@@ -234,10 +235,7 @@ export default function PortalDashboard() {
                       className="block rounded-md border border-border/60 p-3 transition-colors hover:bg-amber-50"
                     >
                       <p className="truncate font-medium">{event.title}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {formatDate(event.date)}
-                        {event.time ? ` · ${event.time}` : ""}
-                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">{formatEventSchedule(event)}</p>
                     </Link>
                   ))}
                 </div>
