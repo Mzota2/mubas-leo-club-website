@@ -7,6 +7,12 @@ import type { Leader } from "@/lib/types"
 export function useLeaders() {
   return useQuery({
     queryKey: ["leaders"],
-    queryFn: () => getLeaders(),
+    queryFn: async () => {
+      try {
+        return await getLeaders()
+      } catch {
+        return []
+      }
+    },
   })
 }

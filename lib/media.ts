@@ -44,7 +44,9 @@ export const media = {
     ],
   },
   photos: {
-    bloodDonation: "/blood-donation-event.jpg",
+    environment: "/Assets/environment.jpg",
+    communityService: "/Assets/community-service.jpg",
+    bloodDonation: "/Assets/blood-donation.jpg",
     charityGala: "/charity-gala.png",
     cleanup: "/community-cleanup-volunteers.png",
     education: "/education-outreach-children.jpg",
@@ -52,9 +54,14 @@ export const media = {
     treeVolunteers: "/tree-planting-volunteers.png",
     youthGroup: "/youth-workshop-group.jpg",
     youthLeadership: "/youth-workshop-leadership.jpg",
-    homeHero: "/images/home-20-20screen.jpg",
+    homeHero: "/Assets/hero.jpg",
+    impact:"/Assets/impact.jpg",
     logo: "/logo.jpeg",
     executive: "/Assets/executive.jpeg",
+  },
+
+  videos: {
+    impactVideo: "/Assets/impact-video.mp4",
   },
   people: {
     male: "/professional-male-headshot.png",

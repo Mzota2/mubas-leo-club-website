@@ -12,7 +12,7 @@ export default function HomePage() {
   return (
     <div className="flex flex-col">
       {/* Hero Section with Video/Image Background */}
-      <section className="relative flex min-h-[100svh] max-h-[900px] items-center justify-center overflow-hidden py-24">
+      <section className="relative flex  max-h-[900px] items-center justify-center overflow-hidden py-24">
         {/* Background Image/Video */}
         <div className="absolute inset-0 z-0">
           <Image
@@ -25,8 +25,8 @@ export default function HomePage() {
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/70 z-10" />
           <div className="absolute inset-0 bg-gradient-leo-primary opacity-70 z-10" />
-          {/* Optional: Uncomment to use video instead of image
-          <video
+          {/* Optional: Uncomment to use video instead of image */}
+          {/* <video
             autoPlay
             loop
             muted
@@ -34,8 +34,8 @@ export default function HomePage() {
             className="w-full h-full object-cover"
           >
             <source src="/hero-video.mp4" type="video/mp4" />
-          </video>
-          */}
+          </video> */}
+         
         </div>
 
         {/* Hero Content */}
@@ -88,9 +88,9 @@ export default function HomePage() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-12">
             {[
-              { number: "500+", label: "Active Members", icon: Users },
-              { number: "100+", label: "Service Projects", icon: Heart },
-              { number: "50+", label: "Events Annually", icon: Calendar },
+              { number: "100+", label: "Active Members", icon: Users },
+              { number: "20+", label: "Service Projects", icon: Heart },
+              { number: "10+", label: "Events Annually", icon: Calendar },
               { number: "10K+", label: "Lives Impacted", icon: TrendingUp },
             ].map((stat, index) => (
               <div
@@ -128,7 +128,7 @@ export default function HomePage() {
             </div>
             <div className="relative h-56 md:h-[400px] rounded-lg overflow-hidden shadow-xl">
               <Image
-                src={media.photos.homeHero}
+                src={media.photos.impact}
                 alt="Leo Club members serving the community"
                 fill
                 className="object-cover"
@@ -157,21 +157,21 @@ export default function HomePage() {
                 description: "Blood donation drives, health awareness campaigns, and medical outreach programs that save lives and improve community health.",
                 icon: Heart,
                 color: "bg-red-500",
-                image: media.posters.bloodDrive,
+                image: media.photos.bloodDonation,
               },
               {
                 title: "Environment",
                 description: "Tree planting, clean-up campaigns, and environmental education initiatives that protect our planet for future generations.",
                 icon: Target,
                 color: "bg-green-500",
-                image: media.activities.planting[1],
+                image: media.photos.environment,
               },
               {
                 title: "Community Service",
                 description: "Educational support, youth empowerment, and community development projects that transform lives and build stronger communities.",
                 icon: Users,
                 color: "bg-purple-500",
-                image: media.photos.education,
+                image: media.photos.communityService,
               },
             ].map((service) => (
               <Card key={service.title} className="overflow-hidden hover:shadow-xl transition-all duration-300 border-0 shadow-lg group rounded-lg">
@@ -332,13 +332,20 @@ export default function HomePage() {
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 mb-12">
-            <div className="relative h-56 md:h-[400px] rounded-lg overflow-hidden shadow-xl">
-              <Image
-                src={media.photos.cleanup}
-                alt="Community cleanup volunteers"
-                fill
-                className="object-cover"
-              />
+            <div className="relative h-56 overflow-hidden rounded-md shadow-xl md:h-[400px]">
+              <video
+                autoPlay
+                loop
+                muted
+                playsInline
+                disablePictureInPicture
+                disableRemotePlayback
+                controls={false}
+                aria-label="Leo Club community impact"
+                className="absolute inset-0 h-full w-full object-cover"
+              >
+                <source src={media.videos.impactVideo} type="video/mp4" />
+              </video>
             </div>
             <div className="flex flex-col justify-center">
               <h3 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900">Transforming Communities</h3>

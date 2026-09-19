@@ -12,8 +12,12 @@ export function useEvents(category?: string, status?: string) {
       const constraints = []
       if (category) constraints.push(where("category", "==", category))
       if (status) constraints.push(where("status", "==", status))
-      constraints.push(orderBy("date", "desc"))
-      return getEvents(constraints)
+      try {
+        return await getEvents([...constraints, orderBy("date", "desc")])
+      } catch {
+        const rows = await getEvents(constraints)
+        return [...rows].sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+      }
     },
   })
 }

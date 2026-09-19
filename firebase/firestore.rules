@@ -59,6 +59,11 @@ service cloud.firestore {
       allow create, update, delete: if isAdminOrLeader();
     }
 
+    match /leaders/{leaderId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminOrLeader();
+    }
+
     match /gallery/{imageId} {
       allow read: if true;
       allow create, update, delete: if isAdminOrLeader();
