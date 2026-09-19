@@ -179,7 +179,7 @@ export interface Training {
   createdAt: string
 }
 
-export type TrainingResourceType = "youtube" | "video" | "article"
+export type TrainingResourceType = "lionsclubinternational" | "lionsclub" | "youtube" | "video" | "article"
 
 export interface TrainingResource {
   id: string

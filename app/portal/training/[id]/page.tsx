@@ -3,7 +3,7 @@
 import { use, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, CheckCircle2, Trophy } from "lucide-react"
+import { ArrowLeft, CheckCircle2, ExternalLink, Globe, Trophy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/hooks/use-auth"
@@ -17,6 +17,7 @@ import {
   useUpsertTrainingProgress,
 } from "@/lib/hooks/use-training-program"
 import { passingScoreFor, PERFECT_QUIZ_XP, RESOURCE_XP, youtubeIdFromUrl } from "@/lib/training/gamify"
+import { isLionsClubResource, LIONS_CLUB_DEFAULT_URL } from "@/lib/training/resources"
 import {
   emptyProgress,
   isModuleUnlocked,
@@ -164,6 +165,32 @@ export default function PortalTrainingModulePage({ params }: { params: Promise<{
                   ) : null}
                   {resource.type === "article" && resource.body ? (
                     <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-neutral-700">{resource.body}</p>
+                  ) : null}
+                  {isLionsClubResource(resource.type) ? (
+                    <div className="mt-3 overflow-hidden rounded-md">
+                      <a
+                        href={resource.url || LIONS_CLUB_DEFAULT_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between gap-3 bg-linear-to-r from-[#4B286D] via-[#3A1F54] to-[#2D1842] p-4 text-white"
+                      >
+                        <span>
+                          <span className="block text-[11px] font-medium uppercase tracking-[0.18em] text-[#C4A35A]">
+                            Lions Clubs International
+                          </span>
+                          <span className="mt-1 inline-flex items-center gap-1 text-sm font-medium">
+                            Open official resource
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </span>
+                        </span>
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#C4A35A]/15 text-[#C4A35A]">
+                          <Globe className="h-4 w-4" />
+                        </span>
+                      </a>
+                      {resource.body ? (
+                        <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-neutral-700">{resource.body}</p>
+                      ) : null}
+                    </div>
                   ) : null}
                   {!viewed ? (
                     <Button type="button" className="mt-4 rounded-md bg-leo-primary text-white" onClick={() => markViewed(resource.id)}>
